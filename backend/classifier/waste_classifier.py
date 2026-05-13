@@ -68,11 +68,35 @@ def classify_waste(image_bytes: bytes, controller=None, db_session=None) -> Clas
     3. Actuate bin lid via controller (hardware or simulator)
     4. Persist event to database
     5. Return structured result for UI
+    
+    ROBUSTNESS: Always returns a result, never raises to 500
     """
     import time
     start = time.monotonic()
 
-    raw = classify_image(image_bytes)
+    try:
+        raw = classify_image(image_bytes)
+    except Exception as exc:
+        logger.error(f"Image classification failed: {exc}", exc_info=True)
+        # Return safe error result
+        return ClassificationResult(
+            item_identified="Unable to analyze",
+            category="TRASH",
+            confidence=0.0,
+            is_contaminated=False,
+            contamination_details="",
+            reasoning="Classification service temporarily unavailable. Please try again.",
+            bin_action="NONE",
+            education_tip="Check your internet connection and try uploading a clearer image.",
+            color=CATEGORY_COLORS.get("TRASH", "#6b7280"),
+            icon=CATEGORY_ICONS.get("TRASH", "🗑️"),
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            processing_time_ms=int((time.monotonic() - start) * 1000),
+            pun="",
+            appreciation_message="No worries! Try again with a clearer image. 📸",
+            needs_confirmation=False,
+            confirmation_question="",
+        )
 
     elapsed_ms = int((time.monotonic() - start) * 1000)
 
@@ -108,6 +132,7 @@ def classify_waste(image_bytes: bytes, controller=None, db_session=None) -> Clas
             logger.info(f"Lid opened: {bin_type} for {settings.lid_open_duration}s")
         except Exception as exc:
             logger.error(f"Hardware actuation failed: {exc}")
+            # Don't raise; continue to DB write
 
     # Persist to DB
     if db_session:
@@ -123,5 +148,6 @@ def classify_waste(image_bytes: bytes, controller=None, db_session=None) -> Clas
             )
         except Exception as exc:
             logger.error(f"DB write failed: {exc}")
+            # Don't raise; return result anyway
 
     return result

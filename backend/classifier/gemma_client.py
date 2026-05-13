@@ -239,7 +239,7 @@ def classify_image(image_bytes: bytes) -> dict:
     """
     Send an image to Gemma 4 and get a structured waste classification result.
     Routes to the configured backend automatically.
-    Falls back to a HUMAN response if the model refuses or returns unparseable output.
+    Falls back to a safe response if ANY error occurs.
     """
     backend = settings.gemma_backend
     logger.info(f"Classifying image via backend={backend}, model={settings.gemma_model}")
@@ -254,15 +254,44 @@ def classify_image(image_bytes: bytes) -> dict:
         else:
             raise ValueError(f"Unknown backend: {backend}")
     except (json.JSONDecodeError, ValueError, KeyError) as exc:
-        logger.warning(f"Could not parse model output as JSON ({exc}); returning HUMAN fallback")
-        return dict(_HUMAN_FALLBACK)
+        logger.warning(f"Could not parse model output as JSON ({exc}); returning fallback")
+        return _safe_fallback(str(exc))
     except Exception as exc:
-        # Re-raise unexpected errors (network, auth, etc.) so the HTTP layer can 500 them
-        raise
+        # Catch ALL unexpected errors and return fallback instead of 500-ing
+        logger.error(f"Unexpected error during classification: {exc}", exc_info=True)
+        return _safe_fallback(str(exc))
 
-    _validate_result(result)
+    # Validate result before returning
+    try:
+        _validate_result(result)
+    except ValueError as exc:
+        logger.error(f"Validation failed: {exc}; returning fallback")
+        return _safe_fallback(str(exc))
+
     logger.info(f"Classification: {result.get('category')} | confidence={result.get('confidence')}")
     return result
+
+
+def _safe_fallback(error_msg: str = "") -> dict:
+    """
+    Return a safe fallback classification when any error occurs.
+    This prevents 500 errors and always gives the user a response.
+    """
+    logger.warning(f"Using fallback classification due to: {error_msg}")
+    return {
+        "item_identified": "Unknown item",
+        "category": "TRASH",
+        "confidence": 0.5,
+        "is_contaminated": False,
+        "contamination_details": "",
+        "reasoning": "Unable to analyze. Please try again or check with clearer lighting.",
+        "bin_action": "NONE",
+        "education_tip": "For best results, ensure good lighting and clear visibility of the item.",
+        "pun": "",
+        "appreciation_message": "No worries! Try again with a clearer image. 📸",
+        "needs_confirmation": False,
+        "confirmation_question": "",
+    }
 
 
 def _validate_result(result: dict) -> None:
