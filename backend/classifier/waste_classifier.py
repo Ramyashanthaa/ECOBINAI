@@ -55,6 +55,7 @@ class ClassificationResult:
     timestamp: str
     processing_time_ms: int
     pun: str = ""
+    appreciation_message: str = ""
     needs_confirmation: bool = False
     confirmation_question: str = ""
 
@@ -90,6 +91,7 @@ def classify_waste(image_bytes: bytes, controller=None, db_session=None) -> Clas
         timestamp=datetime.now(timezone.utc).isoformat(),
         processing_time_ms=elapsed_ms,
         pun=raw.get("pun", ""),
+        appreciation_message=raw.get("appreciation_message", ""),
         needs_confirmation=bool(raw.get("needs_confirmation", False)),
         confirmation_question=raw.get("confirmation_question", ""),
     )

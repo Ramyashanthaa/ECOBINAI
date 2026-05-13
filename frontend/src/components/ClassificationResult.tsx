@@ -173,6 +173,20 @@ export default function ClassificationResultPanel({ result, isLoading, onConfirm
         <p className="text-gray-300 text-sm">{result.reasoning}</p>
       </div>
 
+      {/* Appreciation Message */}
+      {result.appreciation_message && (
+        <div 
+          className="rounded-xl p-4 text-center border-l-4 font-medium text-sm"
+          style={{
+            backgroundColor: result.color + "15",
+            color: result.color,
+            borderColor: result.color,
+          }}
+        >
+          {result.appreciation_message}
+        </div>
+      )}
+
       {/* Education tip */}
       {result.education_tip && (
         <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-xl p-3">

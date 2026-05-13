@@ -60,6 +60,7 @@ async def classify_image_endpoint(
         timestamp=result.timestamp,
         processing_time_ms=result.processing_time_ms,
         pun=result.pun,
+        appreciation_message=result.appreciation_message,
         needs_confirmation=result.needs_confirmation,
         confirmation_question=result.confirmation_question,
     )

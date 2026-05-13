@@ -16,6 +16,7 @@ class ClassificationResponse(BaseModel):
     timestamp: str
     processing_time_ms: int
     pun: str = ""
+    appreciation_message: str = ""
     needs_confirmation: bool = False
     confirmation_question: str = ""
 

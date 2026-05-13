@@ -14,6 +14,7 @@ export interface ClassificationResult {
   timestamp: string;
   processing_time_ms: number;
   pun?: string;
+  appreciation_message?: string;
   needs_confirmation?: boolean;
   confirmation_question?: string;
 }
