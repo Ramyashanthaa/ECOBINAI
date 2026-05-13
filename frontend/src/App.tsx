@@ -241,7 +241,7 @@ export default function App() {
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-3xl">🌍</span>
+          <img src="/logo.png" alt="EcoBinAI logo" className="h-16 w-16 object-contain rounded-xl" />
           <div>
             <h1 className="text-xl font-bold tracking-tight">EcoBinAI</h1>
             <p className="text-xs text-gray-500">Gemma 4 · Smart Waste Sorting</p>

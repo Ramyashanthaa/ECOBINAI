@@ -13,6 +13,11 @@ services:
       - GEMMA_MODEL=${GEMMA_MODEL:-gemma-4-it}
       - HARDWARE_MODE=false
       - DATABASE_URL=sqlite:////data/ecobin.db
+    # For Raspberry Pi hardware mode, mount the GPIO device and enable privileged mode.
+    # Uncomment if running on Pi with direct servo control from the container.
+    # devices:
+    #   - /dev/gpiomem:/dev/gpiomem
+    # privileged: true
     volumes:
       - ecobin-data:/data
     restart: unless-stopped

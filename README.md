@@ -17,7 +17,7 @@ EcoBinAI turns any trash bin into an intelligent waste-sorting station. A camera
 
 ## Solution
 
-EcoBinAI brings smart sorting to **any bin, anywhere** — including communities with spotty internet, schools, hospitals, and outdoor public spaces — by running Gemma 4 fully locally on an edge device (Raspberry Pi 4) using the E2B/E4B models.
+EcoBinAI brings smart sorting to **any bin, anywhere** — including communities with spotty internet, schools, hospitals, and outdoor public spaces — by running Gemma 4 fully locally on an edge device (Raspberry Pi 5) using the E2B/E4B models.
 
 ---
 
@@ -109,18 +109,41 @@ Upload a photo of any waste item — Gemma 4 will classify it and the correct bi
 
 ---
 
-## Edge / Offline Mode (Raspberry Pi + Ollama)
+## Edge / Offline Mode (Raspberry Pi 5 + Ollama)
 
 ```bash
-# On the Raspberry Pi
+# On the Raspberry Pi 5
 curl -fsSL https://ollama.com/install.sh | sh
 ollama pull gemma4:e2b    # or gemma4:e4b for better accuracy
+```
 
-# In .env
+### Raspberry Pi 5 hardware setup
+1. Boot Raspberry Pi OS 64-bit and connect to the network.
+2. Install system dependencies:
+```bash
+sudo apt-get update
+sudo apt-get install -y python3 python3-venv python3-dev python3-opencv \
+  libjpeg-dev libopenjp2-7-dev libatlas-base-dev libblas-dev liblapack-dev pkg-config
+```
+3. Run the Pi setup helper:
+```bash
+chmod +x scripts/setup_pi.sh
+./scripts/setup_pi.sh
+```
+4. Configure `.env` for edge hardware:
+```bash
 GEMMA_BACKEND=ollama
 OLLAMA_MODEL=gemma4:e2b
-HARDWARE_MODE=true        # enables GPIO servo control
+HARDWARE_MODE=true
+CAMERA_INDEX=/dev/video0  # or 0 for the first USB/CSI camera
 ```
+5. Start the backend on the Pi:
+```bash
+source .venv/bin/activate
+uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
+```
+
+If you want the Pi to control GPIO from Docker, mount `/dev/gpiomem` and run with `HARDWARE_MODE=true`.
 
 No internet connection required after model download.
 

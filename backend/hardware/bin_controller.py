@@ -31,7 +31,7 @@ class BinController:
             self._gpio = GPIO
             GPIO.setmode(GPIO.BCM)
             GPIO.setwarnings(False)
-            self._pwms: dict = {}
+            self._pwms: dict[str, object] = {}
             for bin_type, pin in SERVO_PINS.items():
                 GPIO.setup(pin, GPIO.OUT)
                 pwm = GPIO.PWM(pin, PWM_FREQ)
@@ -39,19 +39,38 @@ class BinController:
                 self._pwms[bin_type] = pwm
             logger.info("BinController initialised with real GPIO")
         except (ImportError, RuntimeError) as exc:
-            logger.warning(f"GPIO unavailable ({exc}), switching to simulator")
-            from backend.hardware.simulator import BinSimulator
-            self._delegate = BinSimulator()
-            self._gpio = None
+            logger.warning(f"RPi.GPIO unavailable ({exc}), trying gpiozero fallback")
+            try:
+                from gpiozero import Servo
+                self._gpio = None
+                self._servos: dict[str, object] = {}
+                for bin_type, pin in SERVO_PINS.items():
+                    servo = Servo(pin)
+                    servo.value = -1
+                    self._servos[bin_type] = servo
+                logger.info("BinController initialised with gpiozero")
+            except (ImportError, RuntimeError) as exc2:
+                logger.warning(f"gpiozero unavailable ({exc2}), switching to simulator")
+                from backend.hardware.simulator import BinSimulator
+                self._delegate = BinSimulator()
+                self._gpio = None
 
     def open_lid(self, bin_type: str, duration: int = 5) -> None:
         if hasattr(self, "_delegate"):
             self._delegate.open_lid(bin_type, duration)
             return
 
-        if bin_type not in self._pwms:
-            raise ValueError(f"Unknown bin: {bin_type}")
-        self._pwms[bin_type].ChangeDutyCycle(OPEN_DUTY)
+        if hasattr(self, "_pwms"):
+            if bin_type not in self._pwms:
+                raise ValueError(f"Unknown bin: {bin_type}")
+            self._pwms[bin_type].ChangeDutyCycle(OPEN_DUTY)
+        elif hasattr(self, "_servos"):
+            if bin_type not in self._servos:
+                raise ValueError(f"Unknown bin: {bin_type}")
+            self._servos[bin_type].value = 1
+        else:
+            raise RuntimeError("No hardware controller available")
+
         logger.info(f"[HW] {bin_type} lid OPEN")
         time.sleep(duration)
         self.close_lid(bin_type)
@@ -60,7 +79,13 @@ class BinController:
         if hasattr(self, "_delegate"):
             self._delegate.close_lid(bin_type)
             return
-        self._pwms[bin_type].ChangeDutyCycle(CLOSED_DUTY)
+
+        if hasattr(self, "_pwms"):
+            self._pwms[bin_type].ChangeDutyCycle(CLOSED_DUTY)
+        elif hasattr(self, "_servos"):
+            self._servos[bin_type].value = -1
+        else:
+            raise RuntimeError("No hardware controller available")
         logger.info(f"[HW] {bin_type} lid CLOSED")
 
     def close_all(self) -> None:
@@ -71,9 +96,20 @@ class BinController:
             self.close_lid(bin_type)
 
     def cleanup(self) -> None:
+        if hasattr(self, "_delegate"):
+            self._delegate.cleanup()
+            return
+
         if self._gpio and not hasattr(self, "_delegate"):
             self.close_all()
             self._gpio.cleanup()
+
+        if hasattr(self, "_servos"):
+            for servo in self._servos.values():
+                try:
+                    servo.close()
+                except Exception:
+                    pass
 
 
 def get_controller():

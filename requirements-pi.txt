@@ -1,0 +1,5 @@
+# Raspberry Pi 5 / ARM64 hardware dependencies
+# Includes the core EcoBinAI dependencies plus GPIO support.
+-r requirements.txt
+RPi.GPIO==0.7.1
+gpiozero==1.7.0

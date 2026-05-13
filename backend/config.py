@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     servo_pin_hazardous: int = 10
 
     # Camera
-    camera_index: int = 0
+    camera_index: int | str = 0
     camera_resolution_w: int = 640
     camera_resolution_h: int = 480
 
