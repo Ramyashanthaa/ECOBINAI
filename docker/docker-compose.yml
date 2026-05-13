@@ -1,0 +1,37 @@
+version: "3.9"
+
+services:
+  ecobin-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMMA_BACKEND=${GEMMA_BACKEND:-google_ai_studio}
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+      - GEMMA_MODEL=${GEMMA_MODEL:-gemma-4-it}
+      - HARDWARE_MODE=false
+      - DATABASE_URL=sqlite:////data/ecobin.db
+    volumes:
+      - ecobin-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Optional: local Ollama for fully offline edge deployment
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["edge"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ecobin-data:
+  ollama-models:

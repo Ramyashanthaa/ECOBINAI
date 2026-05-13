@@ -1,0 +1,57 @@
+from pydantic import BaseModel, Field
+from typing import Optional
+
+
+class ClassificationResponse(BaseModel):
+    item_identified: str
+    category: str
+    confidence: float
+    is_contaminated: bool
+    contamination_details: str
+    reasoning: str
+    bin_action: str
+    education_tip: str
+    color: str
+    icon: str
+    timestamp: str
+    processing_time_ms: int
+    pun: str = ""
+    needs_confirmation: bool = False
+    confirmation_question: str = ""
+
+
+class WasteEventOut(BaseModel):
+    id: int
+    item_description: str
+    category: str
+    confidence: float
+    is_contaminated: bool
+    bin_action: str
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+class StatsResponse(BaseModel):
+    total_items: int
+    category_counts: dict[str, int]
+    contamination_rate: float
+    recyclable_pct: float
+    compost_pct: float
+    trash_pct: float
+    hazardous_pct: float
+
+
+class LidStateResponse(BaseModel):
+    RECYCLABLE: bool
+    COMPOST: bool
+    TRASH: bool
+    HAZARDOUS: bool
+
+
+class HealthResponse(BaseModel):
+    status: str
+    backend: str
+    model: str
+    hardware_mode: bool
+    version: str = "1.0.0"
