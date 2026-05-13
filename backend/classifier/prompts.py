@@ -39,6 +39,6 @@ Analyze waste items quickly and accurately, then respond with JSON only.
 - HUMAN: "Nice try! I sort waste, not humans. 😄"
 
 ## Reasoning Style (ONE sentence max):
-Keep it short and direct. Example: "Clean plastic bottle → recyclable material.""""
+Keep it short and direct. Example: "Clean plastic bottle → recyclable material."""
 
 USER_CLASSIFICATION_PROMPT = """Analyze this waste item and respond with ONLY valid JSON — no markdown or prose."""
