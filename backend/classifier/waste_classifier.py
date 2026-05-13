@@ -58,6 +58,7 @@ class ClassificationResult:
     appreciation_message: str = ""
     needs_confirmation: bool = False
     confirmation_question: str = ""
+    unified_description: str = ""  # Merged summary: "Item - is a Category because reason"
 
 
 def classify_waste(image_bytes: bytes, controller=None, db_session=None) -> ClassificationResult:
@@ -73,6 +74,9 @@ def classify_waste(image_bytes: bytes, controller=None, db_session=None) -> Clas
     """
     import time
     start = time.monotonic()
+
+    # Determine if hazardous bin is available
+    hazardous_bin_available = settings.servo_pin_hazardous is not None and settings.servo_pin_hazardous > 0
 
     try:
         raw = classify_image(image_bytes)
@@ -96,15 +100,24 @@ def classify_waste(image_bytes: bytes, controller=None, db_session=None) -> Clas
             appreciation_message="No worries! Try again with a clearer image. 📸",
             needs_confirmation=False,
             confirmation_question="",
+            unified_description="Unable to analyze this image. Please try again with a clearer image.",
         )
 
     elapsed_ms = int((time.monotonic() - start) * 1000)
 
     category = raw.get("category", "TRASH")
+    confidence = float(raw.get("confidence", 0.0))
+    
+    # RULE: If confidence < 75%, classify as TRASH by default
+    if confidence < 0.75 and category not in ("HUMAN", "PENDING"):
+        original_category = category
+        category = "TRASH"
+        logger.info(f"Low confidence ({confidence:.1%}): overriding {original_category} → TRASH")
+    
     result = ClassificationResult(
         item_identified=raw.get("item_identified", "Unknown item"),
         category=category,
-        confidence=float(raw.get("confidence", 0.0)),
+        confidence=confidence,
         is_contaminated=bool(raw.get("is_contaminated", False)),
         contamination_details=raw.get("contamination_details", ""),
         reasoning=raw.get("reasoning", ""),
@@ -119,6 +132,23 @@ def classify_waste(image_bytes: bytes, controller=None, db_session=None) -> Clas
         needs_confirmation=bool(raw.get("needs_confirmation", False)),
         confirmation_question=raw.get("confirmation_question", ""),
     )
+
+    # Set appropriate education tip for hazardous items based on bin availability
+    if category == "HAZARDOUS":
+        if hazardous_bin_available:
+            result.education_tip = "Place in the dedicated hazardous bin for safe disposal."
+        else:
+            result.education_tip = "Dispose of hazardous waste at a certified collection point to protect the environment."
+
+    # Build unified description for display
+    if category == "HUMAN":
+        result.unified_description = result.pun if result.pun else "Not quite waste! I sort waste, not humans."
+    elif category == "PENDING":
+        result.unified_description = result.confirmation_question if result.confirmation_question else f"Is {result.item_identified} clean and empty?"
+    else:
+        # Merge: "Item - is a Category because reasoning"
+        category_display = category.lower()
+        result.unified_description = f"{result.item_identified} - is a {category_display} because {result.reasoning}"
 
     # Skip hardware actuation and DB write for non-waste categories
     if category in ("HUMAN", "PENDING"):

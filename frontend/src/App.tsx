@@ -32,14 +32,7 @@ const BIN_ACTION_MAP: Record<string, keyof LidStates> = {
 function buildSpeechText(r: ClassificationResult): string {
   if (r.category === "HUMAN") return r.pun || "Hello there! I sort waste, not people!";
   if (r.category === "PENDING") return r.confirmation_question || "Can you confirm if this container is clean inside?";
-  const parts = [
-    `I identified this as ${r.item_identified}.`,
-    `It goes in the ${r.category.toLowerCase()} bin.`,
-    r.reasoning,
-  ];
-  if (r.is_contaminated && r.contamination_details) parts.push(r.contamination_details);
-  if (r.education_tip) parts.push(r.education_tip);
-  return parts.join(" ");
+  return [r.reasoning, r.education_tip].filter(Boolean).join(" ");
 }
 
 export default function App() {

@@ -20,10 +20,10 @@ from backend.classifier.prompts import SYSTEM_PROMPT, USER_CLASSIFICATION_PROMPT
 logger = logging.getLogger(__name__)
 
 
-def _optimize_image(image_bytes: bytes, max_size: int = 1024) -> bytes:
+def _optimize_image(image_bytes: bytes, max_size: int = 512) -> bytes:
     """
     Compress and resize image to reduce API latency.
-    Reduces file size by ~60% while maintaining waste classification quality.
+    Reduces file size while preserving enough detail for waste classification.
     """
     try:
         import PIL.Image
@@ -35,7 +35,7 @@ def _optimize_image(image_bytes: bytes, max_size: int = 1024) -> bytes:
         
         # Save with compression
         output = io.BytesIO()
-        img.save(output, format="JPEG", quality=85, optimize=True)
+        img.save(output, format="JPEG", quality=70, optimize=True)
         optimized = output.getvalue()
         
         # Only use optimized version if it's actually smaller
@@ -147,7 +147,7 @@ def _classify_google_ai(image_bytes: bytes) -> dict:
         image = PIL.Image.open(io.BytesIO(optimized_bytes)).convert("RGB")
 
         generation_config = genai_types.GenerationConfig(
-            max_output_tokens=256,   # Further reduced for crisp, short responses
+            max_output_tokens=64,    # Reduced output size for speed
             temperature=0.1,         # low temp → more deterministic JSON
         )
 
@@ -170,10 +170,12 @@ def _classify_ollama(image_bytes: bytes) -> dict:
     
     payload = {
         "model": settings.ollama_model,
-        "prompt": f"{SYSTEM_PROMPT}\n\n{USER_CLASSIFICATION_PROMPT}",
+        "": f"{SYSTEM_PROMPT}\n\n{USER_CLASSIFICATION_PROMPT}",
         "images": [_image_to_base64(optimized_bytes)],
         "stream": False,
         "format": "json",
+        "max_tokens": 64,
+        "temperature": 0.0,
     }
     resp = httpx.post(
         f"{settings.ollama_base_url}/api/generate",
@@ -208,7 +210,7 @@ def _classify_huggingface(image_bytes: bytes) -> dict:
         prompt = f"{SYSTEM_PROMPT}\n\n{USER_CLASSIFICATION_PROMPT}"
         inputs = processor(text=prompt, images=image, return_tensors="pt").to(model.device)
         with torch.no_grad():
-            output = model.generate(**inputs, max_new_tokens=256, do_sample=False)
+            output = model.generate(**inputs, max_new_tokens=128, do_sample=False)
         decoded = processor.decode(output[0], skip_special_tokens=True)
         return _extract_json(decoded)
     except ImportError:
@@ -284,11 +286,11 @@ def _safe_fallback(error_msg: str = "") -> dict:
         "confidence": 0.5,
         "is_contaminated": False,
         "contamination_details": "",
-        "reasoning": "Unable to analyze. Please try again or check with clearer lighting.",
+        "reasoning": "Unable to analyze",
         "bin_action": "NONE",
-        "education_tip": "For best results, ensure good lighting and clear visibility of the item.",
+        "education_tip": "",
         "pun": "",
-        "appreciation_message": "No worries! Try again with a clearer image. 📸",
+        "appreciation_message": "",
         "needs_confirmation": False,
         "confirmation_question": "",
     }

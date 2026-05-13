@@ -123,19 +123,27 @@ export default function ClassificationResultPanel({ result, isLoading, onConfirm
 
   return (
     <div className="glass-card p-6 animate-slide-up space-y-4">
-      {/* Header */}
+      {/* Header with icon and category */}
       <div className="flex items-center gap-3">
         <span className="text-4xl">{result.icon}</span>
-        <div>
-          <p className="text-xs text-gray-500 uppercase tracking-widest">Identified as</p>
-          <h3 className="text-xl font-bold text-white">{result.item_identified}</h3>
-        </div>
         <span
-          className="ml-auto px-3 py-1 rounded-full text-sm font-bold uppercase"
+          className="px-3 py-1 rounded-full text-sm font-bold uppercase"
           style={{ backgroundColor: result.color + "33", color: result.color, border: `1px solid ${result.color}` }}
         >
           {result.category}
         </span>
+      </div>
+
+      {/* Unified Description */}
+      <div 
+        className="rounded-xl p-4 text-center border-l-4 font-medium text-base leading-relaxed"
+        style={{
+          backgroundColor: result.color + "15",
+          color: result.color,
+          borderColor: result.color,
+        }}
+      >
+        {result.unified_description || `${result.item_identified} - is a ${result.category.toLowerCase()} because ${result.reasoning}`}
       </div>
 
       {/* Confidence bar */}
@@ -164,34 +172,6 @@ export default function ClassificationResultPanel({ result, isLoading, onConfirm
             <p className="text-yellow-400 text-sm font-semibold">Contamination Detected</p>
             <p className="text-yellow-300/80 text-xs mt-0.5">{result.contamination_details}</p>
           </div>
-        </div>
-      )}
-
-      {/* Reasoning */}
-      <div className="bg-gray-900/50 rounded-xl p-3">
-        <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">AI Reasoning</p>
-        <p className="text-gray-300 text-sm">{result.reasoning}</p>
-      </div>
-
-      {/* Appreciation Message */}
-      {result.appreciation_message && (
-        <div 
-          className="rounded-xl p-4 text-center border-l-4 font-medium text-sm"
-          style={{
-            backgroundColor: result.color + "15",
-            color: result.color,
-            borderColor: result.color,
-          }}
-        >
-          {result.appreciation_message}
-        </div>
-      )}
-
-      {/* Education tip */}
-      {result.education_tip && (
-        <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-xl p-3">
-          <p className="text-xs text-emerald-400 uppercase tracking-widest mb-1">Eco Tip</p>
-          <p className="text-emerald-300/90 text-sm">{result.education_tip}</p>
         </div>
       )}
 
