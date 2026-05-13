@@ -9,6 +9,7 @@ pydantic-settings==2.3.4
 sqlalchemy==2.0.31
 
 # ── Gemma 4 — Google AI Studio backend ───────────────────────────────────────
+google-genai>=2.2.0
 google-generativeai==0.7.2
 pillow==10.4.0
 
