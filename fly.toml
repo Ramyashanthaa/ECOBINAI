@@ -22,7 +22,7 @@ primary_region = 'cdg'
   min_machines_running = 1
   processes = ['app']
 
-  [http_service.checks.health]
+  [[http_service.checks]]
     method = 'get'
     path = '/api/health'
     interval = '30s'
