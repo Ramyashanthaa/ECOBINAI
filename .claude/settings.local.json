@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(chmod +x /Users/ramyashanthaarunachalam/Documents/EcoBinAI/scripts/setup.sh /Users/ramyashanthaarunachalam/Documents/EcoBinAI/scripts/run_demo.sh)"
+      "Bash(chmod +x /Users/ramyashanthaarunachalam/Documents/EcoBinAI/scripts/setup.sh /Users/ramyashanthaarunachalam/Documents/EcoBinAI/scripts/run_demo.sh)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

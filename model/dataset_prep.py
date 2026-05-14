@@ -69,7 +69,7 @@ SYNTHETIC_EXAMPLES = [
      "Always rinse containers before recycling to keep the stream clean."),
     ("AA battery", "HAZARDOUS", False, "", 0.98,
      "Single-use battery contains toxic chemicals — hazardous waste.", "OPEN_HAZARDOUS",
-     "Take batteries to a dedicated collection point — never bin them."),
+     "Place in the dedicated hazardous bin for safe disposal."),
     ("pizza box with grease stains", "TRASH", True, "Grease soaks paper fibres, making it non-recyclable", 0.93,
      "Greasy pizza box is not recyclable — discard in trash.", "OPEN_TRASH",
      "Tear off the clean top of a pizza box and recycle that part."),
@@ -87,7 +87,7 @@ SYNTHETIC_EXAMPLES = [
      "Remove metal caps before recycling glass bottles."),
     ("smartphone", "HAZARDOUS", False, "", 0.99,
      "Electronics contain heavy metals — must go to e-waste collection.", "OPEN_HAZARDOUS",
-     "Many retailers offer free e-waste drop-off programs."),
+     "Place in the dedicated hazardous bin for safe disposal."),
     ("newspaper", "RECYCLABLE", False, "", 0.98,
      "Clean paper — fully recyclable.", "OPEN_RECYCLABLE",
      "Keep paper dry; wet or contaminated paper should be composted."),
@@ -102,7 +102,7 @@ SYNTHETIC_EXAMPLES = [
      "Flatten boxes to save space in the recycling bin."),
     ("paint can (partially full)", "HAZARDOUS", False, "", 0.97,
      "Liquid paint is hazardous waste — requires special disposal.", "OPEN_HAZARDOUS",
-     "Let paint dry fully before disposal, or donate unused paint."),
+     "Place in the dedicated hazardous bin for safe disposal."),
 ]
 
 

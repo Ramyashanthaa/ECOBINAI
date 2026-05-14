@@ -19,6 +19,7 @@ class ClassificationResponse(BaseModel):
     appreciation_message: str = ""
     needs_confirmation: bool = False
     confirmation_question: str = ""
+    unified_description: str = ""  # Merged summary for UI display
 
 
 class WasteEventOut(BaseModel):

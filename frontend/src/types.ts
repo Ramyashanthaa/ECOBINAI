@@ -17,6 +17,7 @@ export interface ClassificationResult {
   appreciation_message?: string;
   needs_confirmation?: boolean;
   confirmation_question?: string;
+  unified_description?: string;  // Merged summary: "Item - is a Category because reason"
 }
 
 export interface LidStates {

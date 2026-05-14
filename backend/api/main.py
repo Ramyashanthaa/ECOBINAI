@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -10,6 +11,7 @@ import os
 from backend.api.routes import classify as classify_router_module
 from backend.api.routes import stats as stats_router
 from backend.api.schemas import HealthResponse
+from backend.classifier.gemma_client import warmup_backend
 from backend.config import settings
 from backend.database.models import create_tables
 from backend.hardware.bin_controller import get_controller
@@ -29,6 +31,7 @@ async def lifespan(app: FastAPI):
     capture_loop()          # store running loop for thread-safe WebSocket broadcasts
     controller = get_controller()
     classify_router_module.set_controller(controller)
+    await asyncio.to_thread(warmup_backend)
     logger.info(
         f"EcoBinAI started | backend={settings.gemma_backend} "
         f"model={settings.gemma_model} hardware={settings.hardware_mode}"

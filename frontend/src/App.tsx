@@ -32,14 +32,7 @@ const BIN_ACTION_MAP: Record<string, keyof LidStates> = {
 function buildSpeechText(r: ClassificationResult): string {
   if (r.category === "HUMAN") return r.pun || "Hello there! I sort waste, not people!";
   if (r.category === "PENDING") return r.confirmation_question || "Can you confirm if this container is clean inside?";
-  const parts = [
-    `I identified this as ${r.item_identified}.`,
-    `It goes in the ${r.category.toLowerCase()} bin.`,
-    r.reasoning,
-  ];
-  if (r.is_contaminated && r.contamination_details) parts.push(r.contamination_details);
-  if (r.education_tip) parts.push(r.education_tip);
-  return parts.join(" ");
+  return [r.reasoning, r.education_tip].filter(Boolean).join(" ");
 }
 
 export default function App() {
@@ -178,12 +171,14 @@ export default function App() {
     );
   }, []);
 
+  const [isPartial, setIsPartial] = useState(false);
+
   const classifyImage = useCallback(async (file: File) => {
     setIsLoading(true);
+    setIsPartial(false);
     setError(null);
     setResult(null);
 
-    // Cancel any previous auto-close timer and shut all lids
     if (lidTimerRef.current) clearTimeout(lidTimerRef.current);
     setLidStates(DEFAULT_LID_STATES);
 
@@ -194,7 +189,7 @@ export default function App() {
     formData.append("file", file);
 
     try {
-      const res = await fetch(`${API_BASE}/classify/image`, {
+      const res = await fetch(`${API_BASE}/classify/image/stream`, {
         method: "POST",
         body: formData,
       });
@@ -202,24 +197,72 @@ export default function App() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.detail ?? `HTTP ${res.status}`);
       }
-      const data: ClassificationResult = await res.json();
-      setResult(data);
 
-      // ── Lid animation driven directly from the API response ──────────────
-      // bin_action is e.g. "OPEN_RECYCLABLE" → open only that lid
-      const binKey = BIN_ACTION_MAP[data.bin_action];
-      if (binKey) {
-        setLidStates((prev) => ({ ...prev, [binKey]: true }));
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
 
-        // Auto-close after LID_OPEN_MS; cancel if next classification starts first
-        lidTimerRef.current = setTimeout(() => {
-          setLidStates((prev) => ({ ...prev, [binKey]: false }));
-        }, LID_OPEN_MS);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";          // keep incomplete last line
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          let event: Record<string, unknown>;
+          try {
+            event = JSON.parse(line.slice(6));
+          } catch {
+            continue;
+          }
+
+          if (event.status === "partial") {
+            // Show the category card immediately — don't wait for the full result
+            const partial: ClassificationResult = {
+              item_identified: (event.item_identified as string) ?? "Analyzing…",
+              category: event.category as ClassificationResult["category"],
+              confidence: 0,
+              is_contaminated: false,
+              contamination_details: "",
+              reasoning: "",
+              bin_action: `OPEN_${event.category as string}`,
+              education_tip: "",
+              color: (event.color as string) ?? "#6b7280",
+              icon: (event.icon as string) ?? "🗑️",
+              timestamp: new Date().toISOString(),
+              processing_time_ms: 0,
+              unified_description: "",
+              needs_confirmation: false,
+              confirmation_question: "",
+            };
+            setResult(partial);
+            setIsPartial(true);
+            setIsLoading(false);
+          } else if (event.status === "complete") {
+            const data = event.result as ClassificationResult;
+            setResult(data);
+            setIsPartial(false);
+            setIsLoading(false);
+
+            const binKey = BIN_ACTION_MAP[data.bin_action];
+            if (binKey) {
+              setLidStates((prev) => ({ ...prev, [binKey]: true }));
+              lidTimerRef.current = setTimeout(() => {
+                setLidStates((prev) => ({ ...prev, [binKey]: false }));
+              }, LID_OPEN_MS);
+            }
+          } else if (event.status === "error") {
+            throw new Error((event.message as string) ?? "Classification failed");
+          }
+        }
       }
     } catch (err: unknown) {
       setError((err as Error).message ?? "Classification failed");
-    } finally {
       setIsLoading(false);
+      setIsPartial(false);
     }
   }, []);
 
@@ -241,7 +284,7 @@ export default function App() {
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-3xl">🌍</span>
+          <img src="/logo.png" alt="EcoBinAI logo" className="h-16 w-16 object-contain rounded-xl" />
           <div>
             <h1 className="text-xl font-bold tracking-tight">EcoBinAI</h1>
             <p className="text-xs text-gray-500">Gemma 4 · Smart Waste Sorting</p>
@@ -339,6 +382,7 @@ export default function App() {
           <ClassificationResultPanel
             result={result}
             isLoading={isLoading}
+            isPartial={isPartial}
             onConfirm={handleConfirmation}
             onReplay={() => result && speak(buildSpeechText(result))}
             isMuted={isMuted}

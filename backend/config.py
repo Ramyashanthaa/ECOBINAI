@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     )
 
     # Gemma 4 backend
-    gemma_backend: Literal["google_ai_studio", "ollama", "huggingface"] = "google_ai_studio"
+    gemma_backend: Literal["google_ai_studio", "ollama", "huggingface"] = "ollama"
     google_ai_api_key: str = ""
     gemma_model: str = "gemma-4-it"
 
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     servo_pin_hazardous: int = 10
 
     # Camera
-    camera_index: int = 0
+    camera_index: int | str = 0
     camera_resolution_w: int = 640
     camera_resolution_h: int = 480
 
