@@ -10,7 +10,7 @@ primary_region = 'cdg'
 
 [env]
   GEMMA_BACKEND = 'google_ai_studio'
-  GEMMA_MODEL = 'gemma-4-it'
+  GEMMA_MODEL = 'gemma-4-31b-it'
   HARDWARE_MODE = 'false'
   DATABASE_URL = 'sqlite:////data/ecobin.db'
 
