@@ -174,11 +174,12 @@ def _classify_ollama(image_bytes: bytes) -> dict:
         "images": [_image_to_base64(optimized_bytes)],
         "stream": False,
         "format": "json",
+        "keep_alive": "24h",
     }
     resp = httpx.post(
         f"{settings.ollama_base_url}/api/generate",
         json=payload,
-        timeout=60.0,
+        timeout=300.0,
     )
     resp.raise_for_status()
     data = resp.json()
