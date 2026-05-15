@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 // Preferred voices in priority order — first match wins
 const PREFERRED_VOICES = [
@@ -22,6 +22,8 @@ function pickVoice(): SpeechSynthesisVoice | null {
 }
 
 export function useSpeech() {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
   // Trigger voice list load — browsers load voices async on first call
   useEffect(() => {
     if (window.speechSynthesis.getVoices().length === 0) {
@@ -48,20 +50,27 @@ export function useSpeech() {
       if (window.speechSynthesis.paused) window.speechSynthesis.resume();
     }, 5000);
 
+    utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => {
       clearInterval(resumeTimer);
+      setIsSpeaking(false);
       onEnd?.();
     };
-    utterance.onerror = () => clearInterval(resumeTimer);
+    utterance.onerror = () => {
+      clearInterval(resumeTimer);
+      setIsSpeaking(false);
+    };
 
+    setIsSpeaking(true);
     window.speechSynthesis.speak(utterance);
   }, []);
 
   const cancel = useCallback(() => {
     window.speechSynthesis?.cancel();
+    setIsSpeaking(false);
   }, []);
 
   useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
 
-  return { speak, cancel };
+  return { speak, cancel, isSpeaking };
 }

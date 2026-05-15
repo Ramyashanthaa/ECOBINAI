@@ -43,7 +43,7 @@ _CACHE_SIZE = 50
 _MAX_OUTPUT_TOKENS = 2048
 
 
-def _optimize_image(image_bytes: bytes, max_size: int = 768) -> bytes:
+def _optimize_image(image_bytes: bytes, max_size: int = 512) -> bytes:
     try:
         import PIL.Image
         img = PIL.Image.open(io.BytesIO(image_bytes)).convert("RGB")

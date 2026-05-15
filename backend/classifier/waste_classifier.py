@@ -44,7 +44,7 @@ CATEGORY_ICONS = {
 EDUCATION_TIPS = {
     "RECYCLABLE": "Rinse containers before recycling to keep the stream uncontaminated.",
     "COMPOST":    "Composting diverts food waste from landfills and creates nutrient-rich soil.",
-    "TRASH":      "When in doubt, throw it out — contamination ruins entire batches of recyclables.",
+    "TRASH":      "When in doubt, place it in the trash bin — contamination ruins entire batches of recyclables.",
     "HAZARDOUS":  "Dispose of hazardous items at a certified collection point to protect the environment.",
     "HUMAN":      "",
     "PENDING":    "",

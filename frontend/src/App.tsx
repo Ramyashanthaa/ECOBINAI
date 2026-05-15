@@ -19,7 +19,7 @@ const DEFAULT_LID_STATES: LidStates = {
   HAZARDOUS: false,
 };
 
-const LID_OPEN_MS = 5000; // keep lid open 5 s after classification
+const LID_OPEN_MS = 60000; // keep lid open until the next item is scanned (matches backend)
 
 // Maps the bin_action string from the API to the lidStates key
 const BIN_ACTION_MAP: Record<string, keyof LidStates> = {
@@ -50,7 +50,7 @@ export default function App() {
   const wsRef = useRef<WebSocket | null>(null);
   const lidTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { speak, cancel } = useSpeech();
+  const { speak, cancel, isSpeaking } = useSpeech();
   const lastSpokenKeyRef = useRef<string>("");
 
   const { start: startListening, stop: stopListening, isListening } = useSpeechRecognition({
@@ -77,14 +77,15 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [result, isMuted, speak, startListening]);
 
-  // Cancel speech and mic when a new scan starts; reset so next result always speaks
+  // Stop the mic when a new scan starts. (We deliberately do NOT cancel the
+  // current voiceover — auto-scan is already gated on isSpeaking so the next
+  // capture waits until the previous announcement finishes naturally.)
   useEffect(() => {
     if (isLoading) {
-      cancel();
       stopListening();
       lastSpokenKeyRef.current = "";
     }
-  }, [isLoading, cancel, stopListening]);
+  }, [isLoading, stopListening]);
 
   // Reset state when switching between camera and upload modes
   const switchMode = useCallback((mode: InputMode) => {
@@ -331,6 +332,7 @@ export default function App() {
             <CameraFeed
               onCapture={classifyImage}
               isClassifying={isLoading}
+              isSpeaking={isSpeaking}
               resultColor={result?.color}
             />
           ) : (

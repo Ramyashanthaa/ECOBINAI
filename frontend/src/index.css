@@ -14,6 +14,12 @@
   to   { transform: translateX(-50%) translateY(-5px); }
 }
 
+/* Pulsing glow ring under an open bin */
+@keyframes ringPulse {
+  0%, 100% { opacity: 0.35; transform: translateX(-50%) scale(0.95); }
+  50%      { opacity: 0.65; transform: translateX(-50%) scale(1.1); }
+}
+
 /* Glassmorphism card */
 .glass-card {
   @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl;

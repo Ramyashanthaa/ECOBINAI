@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(chmod +x /Users/ramyashanthaarunachalam/Documents/EcoBinAI/scripts/setup.sh /Users/ramyashanthaarunachalam/Documents/EcoBinAI/scripts/run_demo.sh)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(npm run *)",
+      "PowerShell(\\(Invoke-WebRequest -Uri \"https://ecobinai.fly.dev/api/health\" -UseBasicParsing\\).Content)",
+      "Bash(stat -c '%s %y' frontend/public/logo.png; file frontend/public/logo.png 2>&1)",
+      "Read(//c/Personal/EcoBinAI/ECOBINAI/**)",
+      "Bash(curl -sI https://ecobinai.fly.dev/logo.png)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{size_download}\\\\n\" https://ecobinai.fly.dev/logo.png)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{size_download}\\\\n\" https://ecobinai.fly.dev/eco-icon.svg)",
+      "Bash(curl -s -o /dev/null -w \"logo.png: HTTP %{http_code}, %{size_download} bytes\\\\n\" https://ecobinai.fly.dev/logo.png)"
     ]
   }
 }

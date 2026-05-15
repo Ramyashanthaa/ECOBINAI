@@ -1,26 +1,38 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const AUTO_SCAN_INTERVAL_MS = 4000;
+const AUTO_SCAN_INTERVAL_MS = 1500;
+// Scene-change detection: downsample current frame to 32x32 grayscale and
+// compare with the last classified frame. Skip auto-capture if mean absolute
+// pixel diff is below this threshold (0–255 scale).
+const SCENE_DIFF_THRESHOLD = 12;
+const THUMB_SIZE = 32;
 
 interface Props {
   onCapture: (file: File) => void;
   isClassifying: boolean;
+  isSpeaking?: boolean;
   resultColor?: string;
 }
 
-export default function CameraFeed({ onCapture, isClassifying, resultColor }: Props) {
+export default function CameraFeed({ onCapture, isClassifying, isSpeaking = false, resultColor }: Props) {
   const videoRef        = useRef<HTMLVideoElement>(null);
   const streamRef       = useRef<MediaStream | null>(null);
   const isClassifyingRef = useRef(isClassifying);
+  const isSpeakingRef    = useRef(isSpeaking);
+  const lastThumbRef    = useRef<Uint8ClampedArray | null>(null);
 
   const [isActive,    setIsActive]    = useState(false);
   const [isReady,     setIsReady]     = useState(false); // true once video is playing
   const [isAutoScan,  setIsAutoScan]  = useState(false);
   const [flash,       setFlash]       = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  // Prefer the rear ("environment") camera by default — better for photographing
+  // waste items, and matches user expectation on phones.
+  const [facingMode,  setFacingMode]  = useState<"user" | "environment">("environment");
 
-  // Keep ref in sync so the interval callback never reads stale state
+  // Keep refs in sync so the interval callback never reads stale state
   useEffect(() => { isClassifyingRef.current = isClassifying; }, [isClassifying]);
+  useEffect(() => { isSpeakingRef.current    = isSpeaking; },    [isSpeaking]);
 
   // ── THE KEY FIX ────────────────────────────────────────────────────────────
   // The <video> element only exists in the DOM after isActive → true.
@@ -34,9 +46,38 @@ export default function CameraFeed({ onCapture, isClassifying, resultColor }: Pr
   }, [isActive]);
   // ──────────────────────────────────────────────────────────────────────────
 
+  // Compute a small grayscale thumbnail of the current video frame, used for
+  // cheap scene-change detection in auto-scan mode.
+  const getThumbnail = useCallback((): Uint8ClampedArray | null => {
+    const video = videoRef.current;
+    if (!video || video.readyState < 2) return null;
+    const thumb = document.createElement("canvas");
+    thumb.width = THUMB_SIZE;
+    thumb.height = THUMB_SIZE;
+    const tctx = thumb.getContext("2d");
+    if (!tctx) return null;
+    tctx.drawImage(video, 0, 0, THUMB_SIZE, THUMB_SIZE);
+    const { data } = tctx.getImageData(0, 0, THUMB_SIZE, THUMB_SIZE);
+    // Convert RGBA → single grayscale byte per pixel for fast diffing
+    const gray = new Uint8ClampedArray(THUMB_SIZE * THUMB_SIZE);
+    for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+      gray[j] = (data[i] + data[i + 1] + data[i + 2]) / 3;
+    }
+    return gray;
+  }, []);
+
+  const meanAbsDiff = (a: Uint8ClampedArray, b: Uint8ClampedArray): number => {
+    let sum = 0;
+    for (let i = 0; i < a.length; i++) sum += Math.abs(a[i] - b[i]);
+    return sum / a.length;
+  };
+
   const captureFrame = useCallback(() => {
     const video = videoRef.current;
     if (!video || video.readyState < 2) return;
+
+    // Remember this frame's thumbnail so auto-scan can detect scene changes
+    lastThumbRef.current = getThumbnail();
 
     // Brief white flash so the user knows a frame was captured
     setFlash(true);
@@ -58,16 +99,29 @@ export default function CameraFeed({ onCapture, isClassifying, resultColor }: Pr
       "image/jpeg",
       0.92
     );
-  }, [onCapture]);
+  }, [onCapture, getThumbnail]);
+
+  const requestStream = useCallback(async (mode: "user" | "environment"): Promise<MediaStream> => {
+    // Try the preferred camera first; fall back to the other side if unavailable
+    // (e.g. laptops have no rear cam — environment will fail there).
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: mode }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+    } catch {
+      return await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+    }
+  }, []);
 
   const startCamera = useCallback(async () => {
     setCameraError(null);
     setIsReady(false);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      });
+      const stream = await requestStream(facingMode);
       streamRef.current = stream;
       setIsActive(true);        // ← render <video> first …
       // … then the useEffect above attaches streamRef to videoRef
@@ -79,7 +133,27 @@ export default function CameraFeed({ onCapture, isClassifying, resultColor }: Pr
                                       "Could not start camera: " + (err as Error).message
       );
     }
-  }, []);
+  }, [facingMode, requestStream]);
+
+  const flipCamera = useCallback(async () => {
+    const next = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(next);
+    if (!isActive) return;
+    // Swap the active stream in place without unmounting the <video>
+    setIsReady(false);
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    try {
+      const stream = await requestStream(next);
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+      lastThumbRef.current = null;       // reset baseline so auto-scan re-fires
+    } catch (err) {
+      setCameraError("Could not switch camera: " + (err as Error).message);
+    }
+  }, [facingMode, isActive, requestStream]);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -88,17 +162,34 @@ export default function CameraFeed({ onCapture, isClassifying, resultColor }: Pr
     setIsActive(false);
     setIsReady(false);
     setIsAutoScan(false);
+    lastThumbRef.current = null;
   }, []);
 
-  // Auto-scan — fires every AUTO_SCAN_INTERVAL_MS while active, skips if busy
+  // Auto-scan — only fires when the scene has changed meaningfully since
+  // the last classified frame. Prevents re-analyzing the same waste item
+  // (or the same person standing in front of the camera) over and over.
   useEffect(() => {
     if (!isAutoScan || !isActive) return;
-    if (!isClassifyingRef.current) captureFrame();
+    // First capture: always fire so we have a baseline thumbnail
+    if (!isClassifyingRef.current && lastThumbRef.current === null) captureFrame();
+
     const id = setInterval(() => {
-      if (!isClassifyingRef.current) captureFrame();
+      // Wait until the previous classification AND its voiceover have finished
+      if (isClassifyingRef.current || isSpeakingRef.current) return;
+      const current = getThumbnail();
+      if (!current) return;
+      const baseline = lastThumbRef.current;
+      if (baseline && meanAbsDiff(current, baseline) < SCENE_DIFF_THRESHOLD) return;
+      captureFrame();
     }, AUTO_SCAN_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [isAutoScan, isActive, captureFrame]);
+  }, [isAutoScan, isActive, captureFrame, getThumbnail]);
+
+  // Reset baseline thumbnail when auto-scan is turned off so toggling it back
+  // on will fire a fresh first capture rather than waiting on a stale diff.
+  useEffect(() => {
+    if (!isAutoScan) lastThumbRef.current = null;
+  }, [isAutoScan]);
 
   // Stop camera tracks when the component unmounts
   useEffect(() => () => { streamRef.current?.getTracks().forEach((t) => t.stop()); }, []);
@@ -135,7 +226,8 @@ export default function CameraFeed({ onCapture, isClassifying, resultColor }: Pr
   return (
     <div className="relative rounded-2xl overflow-hidden bg-black select-none">
 
-      {/* Live video — mirror display for natural selfie orientation */}
+      {/* Live video — mirror only the front (user) camera so selfies feel
+          natural; rear camera should show the real-world orientation. */}
       <video
         ref={videoRef}
         autoPlay
@@ -143,7 +235,10 @@ export default function CameraFeed({ onCapture, isClassifying, resultColor }: Pr
         muted
         onCanPlay={() => setIsReady(true)}
         className="w-full block"
-        style={{ transform: "scaleX(-1)", minHeight: 280 }}
+        style={{
+          transform: facingMode === "user" ? "scaleX(-1)" : "none",
+          minHeight: 280,
+        }}
       />
 
       {/* Spinner shown while stream is attaching (usually < 500 ms) */}
@@ -219,7 +314,7 @@ export default function CameraFeed({ onCapture, isClassifying, resultColor }: Pr
             <button
               onClick={() => setIsAutoScan((p) => !p)}
               className="flex flex-col items-center gap-1.5 group"
-              title="Auto scan every 4 seconds"
+              title="Auto-scan: only re-analyzes when the scene changes"
             >
               <div
                 className={`w-12 h-6 rounded-full relative transition-all duration-300
@@ -255,6 +350,27 @@ export default function CameraFeed({ onCapture, isClassifying, resultColor }: Pr
                 className="w-12 h-12 rounded-full transition-colors duration-300"
                 style={{ backgroundColor: isClassifying ? "#6b7280" : accentColor }}
               />
+            </button>
+
+            {/* Flip camera (front ↔ back) — iOS-style circular icon button */}
+            <button
+              onClick={flipCamera}
+              aria-label={`Switch to ${facingMode === "environment" ? "front" : "back"} camera`}
+              title={`Switch to ${facingMode === "environment" ? "front" : "back"} camera`}
+              className="w-11 h-11 rounded-full flex items-center justify-center
+                         bg-white/10 hover:bg-white/20 active:bg-white/30
+                         backdrop-blur-md border border-white/15
+                         transition-all duration-200 active:scale-90"
+            >
+              <svg
+                width="22" height="22" viewBox="0 0 24 24" fill="none"
+                stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+              >
+                <path d="M3.5 8.5h4l1.2-2h6.6l1.2 2h4v11h-17z" />
+                <circle cx="12" cy="13.5" r="3.2" />
+                <path d="M9.5 13.5a2.5 2.5 0 0 1 4.5-1.5M14.5 13.5a2.5 2.5 0 0 1-4.5 1.5" />
+                <path d="M14 12l1-1.2M10 15l-1 1.2" />
+              </svg>
             </button>
 
             {/* Stop camera */}

@@ -81,5 +81,9 @@ if os.path.isdir(_frontend_dist):
 
     @app.get("/{full_path:path}", include_in_schema=False)
     def serve_spa(full_path: str):
-        index = os.path.join(_frontend_dist, "index.html")
-        return FileResponse(index)
+        # Serve any real file from dist/ (logo.png, eco-icon.svg, robots.txt, etc.);
+        # fall back to index.html so client-side routes work.
+        candidate = os.path.join(_frontend_dist, full_path)
+        if full_path and os.path.isfile(candidate):
+            return FileResponse(candidate)
+        return FileResponse(os.path.join(_frontend_dist, "index.html"))
