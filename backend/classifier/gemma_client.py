@@ -209,19 +209,13 @@ def _classify_ollama(image_bytes: bytes) -> dict:
         "images": [_image_to_base64(optimized_bytes)],
         "stream": False,
         "format": "json",
-<<<<<<< HEAD
         "keep_alive": "24h",
-=======
         "options": {"num_predict": _MAX_OUTPUT_TOKENS, "temperature": 0.0},
->>>>>>> 202b231c458f7e09d51586c8d53096f287bae539
     }
     resp = _ollama_client.post(
         f"{settings.ollama_base_url}/api/generate",
         json=payload,
-<<<<<<< HEAD
         timeout=300.0,
-=======
->>>>>>> 202b231c458f7e09d51586c8d53096f287bae539
     )
     resp.raise_for_status()
     data = resp.json()
