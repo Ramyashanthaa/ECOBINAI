@@ -67,6 +67,8 @@ async def classify_image_endpoint(
         appreciation_message=result.appreciation_message,
         needs_confirmation=result.needs_confirmation,
         confirmation_question=result.confirmation_question,
+        yes_category=result.yes_category,
+        no_category=result.no_category,
         unified_description=result.unified_description,
     )
 
@@ -131,6 +133,10 @@ async def classify_image_stream_endpoint(
 
             accumulated += value
 
+            # Stream every token so the reasoning panel always has live text
+            if value.strip():
+                yield f"data: {json.dumps({'status': 'thinking', 'text': value})}\n\n"
+
             # Emit a partial event the moment we can identify category + item.
             # This lets the frontend show the colored result card immediately.
             if not partial_sent:
@@ -147,6 +153,11 @@ async def classify_image_stream_endpoint(
             from backend.classifier.gemma_client import _extract_json, _validate_result, _store_cached, _safe_fallback
             raw = _extract_json(accumulated)
             _validate_result(raw)
+            # Persist the pre-JSON reasoning so cache hits can replay it
+            if "{" in accumulated:
+                pre_json = accumulated[: accumulated.index("{")].strip()
+                if pre_json:
+                    raw["_reasoning"] = pre_json
             _store_cached(image_bytes, raw)
         except Exception as exc:
             logger.warning(f"Stream parse failed ({exc}); using fallback")

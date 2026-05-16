@@ -19,7 +19,16 @@ class ClassificationResponse(BaseModel):
     appreciation_message: str = ""
     needs_confirmation: bool = False
     confirmation_question: str = ""
+    yes_category: str = ""
+    no_category: str = ""
     unified_description: str = ""  # Merged summary for UI display
+
+
+class ImpactResponse(BaseModel):
+    items_sorted: int
+    co2_diverted_kg: float
+    recyclables_saved: int
+    compost_diverted: int
 
 
 class WasteEventOut(BaseModel):
