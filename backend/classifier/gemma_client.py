@@ -43,7 +43,7 @@ _CACHE_SIZE = 50
 _MAX_OUTPUT_TOKENS = 2048
 
 
-def _optimize_image(image_bytes: bytes, max_size: int = 768) -> bytes:
+def _optimize_image(image_bytes: bytes, max_size: int = 512) -> bytes:
     try:
         import PIL.Image
         img = PIL.Image.open(io.BytesIO(image_bytes)).convert("RGB")
@@ -208,11 +208,14 @@ def _classify_ollama(image_bytes: bytes) -> dict:
         "prompt": _COMBINED_PROMPT,
         "images": [_image_to_base64(optimized_bytes)],
         "stream": False,
+        "format": "json",
+        "keep_alive": "24h",
         "options": {"num_predict": _MAX_OUTPUT_TOKENS, "temperature": 0.0},
     }
     resp = _ollama_client.post(
         f"{settings.ollama_base_url}/api/generate",
         json=payload,
+        timeout=300.0,
     )
     resp.raise_for_status()
     data = resp.json()

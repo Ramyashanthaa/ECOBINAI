@@ -1,0 +1,39 @@
+# fly.toml app configuration file for ecobinai
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'ecobinai'
+primary_region = 'ams'
+
+[build]
+
+[env]
+  GEMMA_BACKEND = 'google_ai_studio'
+  GEMMA_MODEL = 'gemma-4-26b-a4b-it'
+  HARDWARE_MODE = 'false'
+  DATABASE_URL = 'sqlite:////data/ecobin.db'
+
+[http_service]
+  internal_port = 8080
+  force_https = false
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+  [[http_service.checks]]
+    method = 'get'
+    path = '/api/health'
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '30s'
+
+[[mounts]]
+  source = 'ecobin_data'
+  destination = '/data'
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1

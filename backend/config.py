@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     database_url: str = "sqlite:///./ecobin.db"
-    lid_open_duration: int = 5
+    lid_open_duration: int = 60
 
 
 settings = Settings()

@@ -1,0 +1,13 @@
+fly.toml
+.git/
+.gitignore
+__pycache__/
+*.pyc
+.envrc
+.env
+.venv/
+frontend/node_modules/
+frontend/dist/
+data/
+*.db
+tests/
