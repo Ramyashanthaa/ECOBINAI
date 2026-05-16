@@ -1,231 +1,312 @@
-# 🌍 EcoBinAI — Smart Waste Sorting with Gemma 4
+<div align="center">
+  <img src="frontend/public/logo.png" alt="EcoBin AI" width="220" />
 
-> **Gemma 4 Good Hackathon Submission**  
-> Theme: Global Resilience · Category: Environmental AI · Model: Gemma 4 (multimodal)
+  # EcoBin AI — Smart Waste Sorting with Gemma 4
 
-EcoBinAI turns any trash bin into an intelligent waste-sorting station. A camera mounted on the bin analyzes waste items in real time using Gemma 4's multimodal vision. The correct bin lid opens automatically — no sorting knowledge required from the user.
+  **One item. One bin. One correct decision at a time.**
 
-**The contamination rule**: If a recyclable container (plastic, glass, metal, cardboard) has visible food residue, it is classified as **TRASH** — not RECYCLABLE. This is the single biggest source of recycling stream contamination worldwide.
+  [Live demo →](https://ecobinai.fly.dev/)
+
+  > *Gemma 4 Good Hackathon Submission — Theme: Global Resilience · Category: Environmental AI*
+</div>
 
 ---
 
-## Problem
+## The problem worth solving
 
-- Recycling contamination rates average **25% globally** — one contaminated item can ruin an entire batch
-- Most people genuinely want to recycle correctly but don't know the rules
-- Smart sorting solutions exist only in high-tech, high-income facilities
+The world generates more than **2 billion metric tons of waste every year**, and the number is rising fast. The real issue is not how much waste we create — it is how badly we manage it.
 
-## Solution
+**Today, only 1 in 4 items placed in a recycling bin actually gets recycled.** The rest ends up in landfill because of contamination, confusion, or incorrect sorting. Labels are confusing. Materials overlap. Rules change from city to city. So people guess.
 
-EcoBinAI brings smart sorting to **any bin, anywhere** — including communities with spotty internet, schools, hospitals, and outdoor public spaces — by running Gemma 4 fully locally on an edge device (Raspberry Pi 5) using the E2B/E4B models.
+Somewhere right now, someone is standing in front of a bin, holding an item, wondering: *"Does this go here… or there?"* That single moment of uncertainty, repeated billions of times every day, is contributing to pollution across our soil, oceans, and air.
+
+We celebrate AI for writing poems, generating art, and having conversations. If AI cannot help humanity solve something this basic and this universal, what exactly are we building toward?
+
+**EcoBin AI is that bin.**
+
+---
+
+## How it works
+
+A user holds an item in front of the camera. EcoBin AI streams the frame to **Gemma 4 — Google's advanced multimodal vision model** — which identifies the material, classifies it in real time, explains its reasoning, flags contamination, and triggers the correct bin lid to open automatically. No buttons. No app. No confusion.
+
+> All of this happens in **under three seconds**, with the result card painting on screen *while* the model is still streaming tokens.
+
+### Four bins, plus the edge cases nobody else handles
+
+| Bin | Examples |
+|---|---|
+| ♻️ **Recyclable** | Clean plastic, glass, aluminum, cardboard, paper |
+| 🌱 **Compost** | Food scraps, organic matter, soiled paper |
+| 🗑️ **Trash** | Contaminated recyclables, styrofoam, disposable cups, non-recyclables |
+| ⚠️ **Hazardous** | Batteries, electronics, chemicals, medications |
+| ❓ **Pending** | Opaque containers — the system asks the user a yes/no question by voice before deciding |
+| 👤 **Human** | Only when no waste item is visible at all — the bin gently reminds you it sorts waste, not people |
+
+**The contamination rule is non-negotiable.** A recyclable container with visible food residue is classified as **TRASH**, not RECYCLABLE — because in the real world a single contaminated item ruins an entire batch of recyclables. Disposable coffee cups are always TRASH regardless of branding, angle, or apparent cleanliness. These rules are embedded in the system prompt as inviolable constraints, not left to model judgment.
+
+---
+
+## Why Gemma 4 makes this work
+
+A traditional image classifier trained on a waste dataset achieves high accuracy on known categories and fails completely on everything else. **Gemma 4's multimodal reasoning handles the edge cases that no CNN ever could:** a Starbucks cup held at an angle, a container that might be empty or might not, a hand holding something ambiguous, awkward lighting and camera angles. It classifies, explains, and flags contamination in a single inference call.
+
+The system supports **three Gemma 4 backends**, configured via environment variable:
+
+| Backend | When to use it | How |
+|---|---|---|
+| **`google_ai_studio`** *(default)* | Live cloud demo, fast iteration | `gemma-4-26b-a4b-it` via the `google-genai` SDK. Image bytes sent as raw JPEG to avoid serialization errors. Temperature fixed at `0.0` for deterministic output. Fallback chain: **`gemma-4-26b-a4b-it` → `gemma-4-31b-it` → `gemini-2.5-flash`** ensures uninterrupted classification during model outages. |
+| **`ollama`** | Fully offline / edge / air-gapped deployments | Gemma 4 served locally via a persistent `httpx` connection pool. Zero internet, zero ongoing cost. |
+| **`huggingface`** | Domain-specific fine-tuned weights | `AutoModelForImageTextToText` in `bfloat16` with `device_map="auto"`, supporting Unsloth LoRA fine-tuned weights. |
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      EcoBinAI System                    │
-│                                                         │
-│  📷 Camera  ──►  🧠 Gemma 4 Vision  ──►  🔧 Function   │
-│  (or upload)      (multimodal)           Calling        │
-│                        │                    │           │
-│              Classification +          open_bin_lid()   │
-│              Contamination Check       log_event()      │
-│                        │                    │           │
-│                   📊 Dashboard  ◄──  🗄️ SQLite DB       │
-│                 (React + WebSocket)                     │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                         EcoBin AI System                        │
+│                                                                 │
+│  📷 Live camera   ──►   🧠 Gemma 4 Vision   ──►   🔧 Actuation │
+│  or 📁 upload          (multimodal, SSE)        open_bin_lid() │
+│                              │                                  │
+│              JSON extraction (4-stage fallback)                 │
+│              Confidence gate (< 0.75 → TRASH)                   │
+│              Hard-coded disposal rules                          │
+│                              │                                  │
+│                  📊 Live React dashboard                        │
+│                     · Streaming reasoning panel                 │
+│                     · Real-time bin lid animation               │
+│                     · Pie chart + impact counters               │
+│                     · WebSocket lid-state sync                  │
+│                              │                                  │
+│                    🗄️  SQLite event log                         │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Gemma 4 Features Used
+### Engineering decisions that set this apart
 
-| Feature | How EcoBinAI Uses It |
+- **Streaming SSE classification** (`POST /api/classify/image/stream`) emits three progressive event types: `analyzing` on receipt, **`partial`** the moment the `category` field is parsed from the live token stream, and `complete` when the full result is ready. The colored result card renders *while* Gemma 4 is still generating — making the system feel instantaneous even at 2–4 s model latency.
+- **Four-stage JSON extraction.** Gemma 4 does not always emit clean JSON. The pipeline handles markdown fences, reasoning preambles, partial outputs, and nested blocks in order, falling back at each stage. Classification never silently fails.
+- **MD5-keyed LRU cache (50 items).** Identical frames are never re-classified — meaningful in high-throughput environments.
+- **Image optimization.** Frames are resized to 512 px max and re-encoded as JPEG quality 85 before inference. Faster uploads, fewer vision tokens, lower cost.
+- **Scene-change auto-scan.** In live-camera auto mode, frames are downsampled to a 32×32 grayscale thumbnail and compared frame-to-frame. A new classification fires *only* when the scene has changed meaningfully — so a static waste item or a person standing still is classified once, not on a loop.
+- **Voice-gated capture loop.** The auto-scan refuses to fire while the previous classification's voiceover is still speaking, so announcements always play in full.
+- **Persistent lids.** Bin lids stay open for a full **60 s** after a classification, closing only when the next item is scanned — giving users time to actually use the result.
+- **Confidence gate.** Below `0.75`, the system defaults to **TRASH**. In a contamination context, a cautious misclassification is always preferable to a confident wrong one.
+- **Clean hardware abstraction.** The same controller interface drives both real GPIO servo motors and the software simulator. The demo and the field deployment behave identically.
+
+---
+
+## The dashboard
+
+| Feature | Details |
 |---|---|
-| **Multimodal Vision** | Analyzes real-time camera images to identify waste items |
-| **Native Function Calling** | Calls `open_bin_lid()` and `log_waste_event()` directly |
-| **Edge Deployment (E2B/E4B)** | Runs fully offline on Raspberry Pi 4 via Ollama |
-| **Domain Fine-tuning** | LoRA-fine-tuned on TACO + TrashNet waste datasets |
-| **Instruction Following** | Strict JSON output for contamination-aware classification |
+| **Live camera mode** | Defaults to the rear camera on phones, with an iOS-style flip-camera button. Mirror-corrected for selfie use. |
+| **Auto-scan toggle** | Only re-analyzes when the scene meaningfully changes; never interrupts voice. |
+| **Upload mode** | Drag-and-drop or file picker for testing arbitrary images. |
+| **Streaming reasoning panel** | Shows Gemma 4's chain-of-thought token-by-token as it decides. |
+| **Realistic bin SVGs** | Four animated wheelie bins with hinged lids, wheels, and a pulsing "▼ DROP IT IN" badge over the open bin. |
+| **Voice output** | Web Speech API announcement of category + reasoning + education tip; multilingual voice fallback. |
+| **Voice input** | For PENDING items, the system asks a clarifying yes/no question and listens for the answer. |
+| **Live stats** | Total items · contamination rate · per-category tile (count + %) · pie chart with icon callouts (count + %) · live impact counter (items sorted, CO₂ diverted, recyclables saved). |
+| **Recent activity feed** | Last 10 classifications with timestamps and contamination flags. |
+| **Mobile-responsive** | Bin sizing, gaps, and typography scale automatically on iPhone/Android. |
 
 ---
 
-## Waste Categories
+## Wording rules baked into the prompt
 
-| Category | Examples | Bin |
-|---|---|---|
-| ♻️ **RECYCLABLE** | Clean bottles, cans, cardboard, glass | Green |
-| 🌱 **COMPOST** | Food scraps, peels, coffee grounds, soiled paper | Orange |
-| 🗑️ **TRASH** | Contaminated recyclables, styrofoam, chip bags | Gray |
-| ⚠️ **HAZARDOUS** | Batteries, electronics, paint, medications | Red |
+The model is explicitly instructed to:
 
-**Contamination Rule**: A recyclable item with food residue → classified as TRASH automatically.
+- Refer to bins by name: *"recycling bin", "compost bin", "trash bin", "hazardous waste bin"*.
+- Use **"place in"**, **"put in"**, or **"goes in"** — **never** "throw away", "throw it out", "toss", "discard", or any synonym of throwing.
+- Choose `HUMAN` only when **no** waste item is visible anywhere in the frame. Hands or a person are background context, not a reason to skip classifying the item.
 
 ---
 
-## Tech Stack
+## Tech stack
 
 | Layer | Technology |
 |---|---|
-| AI Model | **Gemma 4** (via Google AI Studio API or Ollama locally) |
-| Fine-tuning | **Unsloth + LoRA** on TACO / TrashNet dataset |
-| Backend | **FastAPI** + **SQLAlchemy** + SQLite |
-| Camera | **OpenCV** (hardware) / image upload (simulation) |
-| Hardware | **RPi.GPIO** + servo motors (Pi) / software simulator (Mac/PC) |
-| Frontend | **React 18** + **Tailwind CSS** + Recharts + WebSocket |
-| Edge Runtime | **Ollama** with Gemma 4 E2B/E4B |
-| Deployment | **Docker** + docker-compose |
+| AI model | **Gemma 4** via `google-genai` SDK (cloud) or Ollama (edge) |
+| Fine-tuning | **Unsloth + LoRA** on TACO / TrashNet (optional) |
+| Backend | **FastAPI**, SSE streaming, **SQLAlchemy** + SQLite, WebSocket for lid state |
+| Vision | **Pillow** for resize/encoding; persistent `httpx` client for Ollama |
+| Hardware (Pi) | **RPi.GPIO** + servo motors (real) / software simulator (dev/cloud) |
+| Frontend | **React 18** + **Vite** + **Tailwind CSS** + **Recharts** + Web Speech API |
+| Cloud deploy | **Fly.io** (multi-stage Docker, persistent SQLite volume, 1 GB Sydney/Amsterdam machine) |
+| Edge runtime | **Ollama** on Raspberry Pi 5 with Gemma 4 |
 
 ---
 
-## Quick Start (Simulation Mode — zero cost, works on any Mac/PC)
+## Built for global resilience
 
-### Prerequisites
-- Python 3.11+
-- Node.js 18+ (for frontend)
-- A free Google AI Studio API key
+The communities where waste mismanagement is most severe are also the communities with the least reliable internet. EcoBin AI was designed for them:
 
-### 1. Clone & Setup
+- The **Ollama backend** operates with zero connectivity.
+- The full system runs on a **Raspberry Pi 5** at a total hardware cost of **~$80**, less than a single month of most SaaS subscriptions.
+- The codebase is **open source and self-contained**. No vendor lock-in, no ongoing cloud cost, no dependency on infrastructure that does not exist in the places that need this most.
+
+This is not AI built for a conference demo. It is AI built to be deployed in a school cafeteria in rural Kenya, a community recycling point in coastal Indonesia, or a university bin in Edinburgh — and work the same way in all three.
+
+---
+
+## Quick start — simulation mode (any Mac / PC / Linux)
+
 ```bash
 git clone <repo-url>
 cd EcoBinAI
-chmod +x scripts/setup.sh
-./scripts/setup.sh
+
+# 1. Backend
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# 2. Frontend
+cd frontend && npm ci && npm run build && cd ..
+
+# 3. Configure
+cp .env.example .env
+# Edit .env: set GOOGLE_AI_API_KEY (free at https://aistudio.google.com/app/apikey)
+
+# 4. Run
+uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
+# Open http://localhost:8000
 ```
 
-### 2. Add your API key
-```bash
-# Edit .env
-GOOGLE_AI_API_KEY=your_free_key_here   # from https://aistudio.google.com/app/apikey
-```
-
-### 3. Run
-```bash
-./scripts/run_demo.sh
-# Open http://localhost:3000
-```
-
-Upload a photo of any waste item — Gemma 4 will classify it and the correct bin lid animates open.
+Upload a photo of any waste item or use the live camera. Gemma 4 will classify it, stream the reasoning, and the correct bin lid animates open.
 
 ---
 
-## Edge / Offline Mode (Raspberry Pi 5 + Ollama)
+## Edge / offline mode — Raspberry Pi 5 + Ollama
 
 ```bash
 # On the Raspberry Pi 5
 curl -fsSL https://ollama.com/install.sh | sh
-ollama pull gemma4:e2b    # or gemma4:e4b for better accuracy
-```
+ollama pull gemma4:e2b              # or gemma4:e4b for better accuracy
 
-### Raspberry Pi 5 hardware setup
-1. Boot Raspberry Pi OS 64-bit and connect to the network.
-2. Install system dependencies:
-```bash
+# System deps
 sudo apt-get update
 sudo apt-get install -y python3 python3-venv python3-dev python3-opencv \
-  libjpeg-dev libopenjp2-7-dev libatlas-base-dev libblas-dev liblapack-dev pkg-config
-```
-3. Run the Pi setup helper:
-```bash
-chmod +x scripts/setup_pi.sh
+  libjpeg-dev libopenjp2-7-dev libatlas-base-dev pkg-config
+
+# Project setup
 ./scripts/setup_pi.sh
 ```
-4. Configure `.env` for edge hardware:
-```bash
+
+`.env` for edge hardware:
+```env
 GEMMA_BACKEND=ollama
 OLLAMA_MODEL=gemma4:e2b
 HARDWARE_MODE=true
-CAMERA_INDEX=/dev/video0  # or 0 for the first USB/CSI camera
+CAMERA_INDEX=/dev/video0
 ```
-5. Start the backend on the Pi:
+
 ```bash
 source .venv/bin/activate
 uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
 ```
 
-If you want the Pi to control GPIO from Docker, mount `/dev/gpiomem` and run with `HARDWARE_MODE=true`.
-
-No internet connection required after model download.
+No internet required after the model is downloaded.
 
 ---
 
-## Fine-tuning Gemma 4 on Waste Data
+## Cloud deploy — Fly.io
 
-Run on a free Kaggle T4 GPU notebook:
+The repo ships with a working `fly.toml` and a **multi-stage Dockerfile** that builds the React frontend and the Python backend in one go.
 
 ```bash
-# Prepare dataset (TrashNet or synthetic)
+fly auth login
+fly apps create ecobinai
+fly volumes create ecobin_data --region ams --size 1
+fly secrets set GOOGLE_AI_API_KEY=your_key_here -a ecobinai
+fly deploy -a ecobinai
+```
+
+The live instance at <https://ecobinai.fly.dev/> runs on a 1 GB shared-cpu machine with a persistent volume for the SQLite event log.
+
+---
+
+## Fine-tuning Gemma 4 on waste data
+
+Run on a free Kaggle T4 GPU notebook (~90 min):
+
+```bash
 python -m model.dataset_prep --source trashnet \
     --input data/dataset-resized --output data/train.jsonl
 
-# Fine-tune with Unsloth + LoRA (~90 min on T4)
 python -m model.fine_tune \
     --model google/gemma-4-e2b-it \
     --data  data/train.jsonl \
     --output ./fine_tuned_ecobin \
     --push_to_hub your-username/ecobin-gemma4-e2b
 
-# Evaluate
 python -m model.evaluate --data data/test.jsonl
 ```
 
 ---
 
-## API Reference
+## API reference
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/classify/image` | Classify a waste item image |
+| `POST` | `/api/classify/image` | Classify a waste item image (non-streaming) |
+| `POST` | `/api/classify/image/stream` | **Streaming** SSE — `analyzing` → `partial` → `complete` |
 | `GET` | `/api/classify/lid-states` | Current bin lid states |
 | `WS` | `/api/classify/ws/lid-states` | Real-time lid state stream |
 | `GET` | `/api/stats/` | Aggregated waste statistics |
-| `GET` | `/api/stats/recent` | Recent classification events |
+| `GET` | `/api/stats/recent?limit=10` | Recent classification events |
+| `GET` | `/api/stats/impact` | Environmental impact counter (CO₂ diverted, recyclables saved) |
 | `GET` | `/api/health` | System health check |
 
 Full interactive docs at `/docs` (Swagger UI).
 
 ---
 
-## Running Tests
+## Tests
 
 ```bash
 source .venv/bin/activate
 pytest tests/ -v
 ```
 
-Tests cover: classifier logic, contamination detection, API endpoints, hardware simulator, WebSocket events.
+Tests cover: classifier logic, contamination detection, JSON-extraction fallbacks, API endpoints, hardware simulator, WebSocket events.
 
 ---
 
-## Impact
-
-- **No internet required** — works in schools, hospitals, rural communities
-- **Language independent** — vision-based, no text literacy required
-- **Scalable** — same software runs on a $55 Raspberry Pi or a data-center server
-- **Educational** — real-time eco tips teach users correct sorting habits
-- **Analytics** — tracks contamination rates to improve local recycling programs
-
----
-
-## Project Structure
+## Project structure
 
 ```
 EcoBinAI/
 ├── backend/
-│   ├── api/            # FastAPI routes, schemas
-│   ├── classifier/     # Gemma 4 client, waste classifier, prompts
-│   ├── hardware/       # Bin controller, camera, simulator
-│   └── database/       # SQLAlchemy models, CRUD
+│   ├── api/            # FastAPI routes, SSE streaming, WebSocket, schemas
+│   ├── classifier/     # Gemma 4 client (3 backends), waste classifier, prompts
+│   ├── hardware/       # Bin controller, camera, simulator, broadcaster
+│   └── database/       # SQLAlchemy models, event log
 ├── frontend/
-│   └── src/            # React dashboard with animated bins
-├── model/
-│   ├── fine_tune.py    # Unsloth LoRA fine-tuning
-│   ├── dataset_prep.py # TACO / TrashNet / synthetic dataset builder
-│   └── evaluate.py     # Accuracy + F1 evaluation
-├── tests/              # pytest suite (classifier, API, simulator)
-├── docker/             # Dockerfile + docker-compose
-└── scripts/            # setup.sh, run_demo.sh
+│   ├── public/         # logo.png, favicon
+│   └── src/
+│       ├── components/ # CameraFeed, BinDisplay, ClassificationResult, StatsPanel
+│       ├── hooks/      # useSpeech, useSpeechRecognition
+│       └── App.tsx     # Dashboard root
+├── model/              # Unsloth LoRA fine-tuning + evaluation scripts
+├── tests/              # pytest suite
+├── docker/             # docker-compose
+├── scripts/            # setup_pi.sh, run_demo.sh
+├── Dockerfile          # Multi-stage: Node build → Python runtime
+└── fly.toml            # Fly.io deployment config
 ```
+
+---
+
+## The closing argument
+
+Waste management is not just an environmental issue — it is a human issue. And if we continue ignoring it, future generations will inherit a world overwhelmed by pollution and buried in waste.
+
+We already know what needs to be done.
+
+**EcoBin AI. One item. One bin. One correct decision at a time.**
 
 ---
 
