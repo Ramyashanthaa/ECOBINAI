@@ -17,6 +17,8 @@ export interface ClassificationResult {
   appreciation_message?: string;
   needs_confirmation?: boolean;
   confirmation_question?: string;
+  yes_category?: string;
+  no_category?: string;
   unified_description?: string;  // Merged summary: "Item - is a Category because reason"
 }
 
@@ -25,6 +27,13 @@ export interface LidStates {
   COMPOST: boolean;
   TRASH: boolean;
   HAZARDOUS: boolean;
+}
+
+export interface ImpactStats {
+  items_sorted: number;
+  co2_diverted_kg: number;
+  recyclables_saved: number;
+  compost_diverted: number;
 }
 
 export interface StatsData {

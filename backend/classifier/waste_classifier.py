@@ -44,7 +44,7 @@ CATEGORY_ICONS = {
 EDUCATION_TIPS = {
     "RECYCLABLE": "Rinse containers before recycling to keep the stream uncontaminated.",
     "COMPOST":    "Composting diverts food waste from landfills and creates nutrient-rich soil.",
-    "TRASH":      "When in doubt, throw it out — contamination ruins entire batches of recyclables.",
+    "TRASH":      "When in doubt, throw it in the trash — contamination ruins entire batches of recyclables.",
     "HAZARDOUS":  "Dispose of hazardous items at a certified collection point to protect the environment.",
     "HUMAN":      "",
     "PENDING":    "",
@@ -69,6 +69,8 @@ class ClassificationResult:
     appreciation_message: str = ""
     needs_confirmation: bool = False
     confirmation_question: str = ""
+    yes_category: str = ""
+    no_category: str = ""
     unified_description: str = ""
 
 
@@ -128,6 +130,8 @@ def build_result_from_raw(
         appreciation_message=raw.get("appreciation_message", ""),
         needs_confirmation=bool(raw.get("needs_confirmation", False)),
         confirmation_question=raw.get("confirmation_question", ""),
+        yes_category=str(raw.get("yes_category", "")).upper(),
+        no_category=str(raw.get("no_category", "TRASH")).upper(),
     )
 
     # Build unified description

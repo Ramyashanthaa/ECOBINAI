@@ -1,6 +1,6 @@
-import React from "react";
+import { useEffect, useRef, useState } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import { StatsData, WasteEvent } from "../types";
+import { ImpactStats, StatsData, WasteEvent } from "../types";
 
 const COLORS: Record<string, string> = {
   RECYCLABLE: "#22c55e",
@@ -9,12 +9,104 @@ const COLORS: Record<string, string> = {
   HAZARDOUS: "#ef4444",
 };
 
+// ── Animated count-up hook ────────────────────────────────────────────────────
+function useCountUp(target: number, decimals = 0, duration = 1400) {
+  const [display, setDisplay] = useState(target);
+  const fromRef = useRef(target);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    const from = fromRef.current;
+    const diff = target - from;
+    if (diff === 0) return;
+    const startTime = performance.now();
+
+    function tick(now: number) {
+      const p = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+      setDisplay(parseFloat((from + diff * eased).toFixed(decimals)));
+      if (p < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        fromRef.current = target;
+      }
+    }
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [target, decimals, duration]);
+
+  return display;
+}
+
+// ── Impact counter card ───────────────────────────────────────────────────────
+function ImpactCounter({ impact }: { impact: ImpactStats }) {
+  const sorted     = useCountUp(impact.items_sorted,      0);
+  const co2        = useCountUp(impact.co2_diverted_kg,   2);
+  const recyclable = useCountUp(impact.recyclables_saved, 0);
+
+  const rows: { icon: string; value: string; label: string; color: string }[] = [
+    {
+      icon:  "♻️",
+      value: sorted.toLocaleString(),
+      label: "Items correctly sorted",
+      color: "#a78bfa",
+    },
+    {
+      icon:  "🌍",
+      value: `${co2.toFixed(2)} kg`,
+      label: "Estimated CO₂ diverted",
+      color: "#34d399",
+    },
+    {
+      icon:  "🌱",
+      value: recyclable.toLocaleString(),
+      label: "Recyclables saved from landfill",
+      color: "#22c55e",
+    },
+  ];
+
+  return (
+    <div className="rounded-2xl overflow-hidden border border-emerald-900/40"
+         style={{ background: "linear-gradient(135deg, #052e16 0%, #0f172a 100%)" }}>
+      {/* Header */}
+      <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+        <span className="text-base">🌿</span>
+        <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
+          Environmental Impact
+        </span>
+      </div>
+
+      {/* Rows */}
+      <div className="divide-y divide-white/5">
+        {rows.map(({ icon, value, label, color }) => (
+          <div key={label} className="flex items-center gap-3 px-4 py-3">
+            <span className="text-xl w-7 text-center flex-shrink-0">{icon}</span>
+            <div className="min-w-0">
+              <p className="text-2xl font-bold tabular-nums leading-none"
+                 style={{ color }}>
+                {value}
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5 leading-tight">{label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer note */}
+      <p className="text-center text-[10px] text-gray-700 pb-3 pt-1">
+        Based on EPA average item weights & recycling emissions factors
+      </p>
+    </div>
+  );
+}
+
 interface Props {
   stats: StatsData | null;
+  impact: ImpactStats | null;
   recentEvents: WasteEvent[];
 }
 
-export default function StatsPanel({ stats, recentEvents }: Props) {
+export default function StatsPanel({ stats, impact, recentEvents }: Props) {
   if (!stats) {
     return (
       <div className="glass-card p-6 text-center text-gray-500 text-sm min-h-40 flex items-center justify-center">
@@ -30,6 +122,8 @@ export default function StatsPanel({ stats, recentEvents }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Impact counter — always shown first */}
+      {impact && <ImpactCounter impact={impact} />}
       {/* Summary tiles */}
       <div className="grid grid-cols-2 gap-3">
         <StatTile label="Total Items" value={stats.total_items} unit="" color="#a78bfa" />

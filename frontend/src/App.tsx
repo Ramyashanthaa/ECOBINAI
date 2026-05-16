@@ -5,7 +5,7 @@ import ClassificationResultPanel from "./components/ClassificationResult";
 import StatsPanel from "./components/StatsPanel";
 import { useSpeech } from "./hooks/useSpeech";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition";
-import { ClassificationResult, LidStates, StatsData, WasteEvent } from "./types";
+import { ClassificationResult, ImpactStats, LidStates, StatsData, WasteEvent } from "./types";
 
 type InputMode = "camera" | "upload";
 
@@ -29,9 +29,23 @@ const BIN_ACTION_MAP: Record<string, keyof LidStates> = {
   OPEN_HAZARDOUS:  "HAZARDOUS",
 };
 
+const CATEGORY_COLORS: Record<string, string> = {
+  RECYCLABLE: "#22c55e",
+  COMPOST:    "#f97316",
+  TRASH:      "#6b7280",
+  HAZARDOUS:  "#ef4444",
+};
+
+const CATEGORY_ICONS: Record<string, string> = {
+  RECYCLABLE: "♻️",
+  COMPOST:    "🌱",
+  TRASH:      "🗑️",
+  HAZARDOUS:  "⚠️",
+};
+
 function buildSpeechText(r: ClassificationResult): string {
   if (r.category === "HUMAN") return r.pun || "Hello there! I sort waste, not people!";
-  if (r.category === "PENDING") return r.confirmation_question || "Can you confirm if this container is clean inside?";
+  if (r.category === "PENDING") return r.confirmation_question || "Is this container empty, or does it still have liquid or food inside?";
   return [r.reasoning, r.education_tip].filter(Boolean).join(" ");
 }
 
@@ -41,6 +55,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [lidStates, setLidStates] = useState<LidStates>(DEFAULT_LID_STATES);
   const [stats, setStats] = useState<StatsData | null>(null);
+  const [impact, setImpact] = useState<ImpactStats | null>(null);
   const [recentEvents, setRecentEvents] = useState<WasteEvent[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -134,12 +149,14 @@ export default function App() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const [statsRes, eventsRes] = await Promise.all([
+        const [statsRes, eventsRes, impactRes] = await Promise.all([
           fetch(`${API_BASE}/stats/`),
           fetch(`${API_BASE}/stats/recent?limit=10`),
+          fetch(`${API_BASE}/stats/impact`),
         ]);
         if (statsRes.ok) setStats(await statsRes.json());
         if (eventsRes.ok) setRecentEvents(await eventsRes.json());
+        if (impactRes.ok) setImpact(await impactRes.json());
       } catch {
         // silently ignore — stats are non-critical
       }
@@ -149,33 +166,41 @@ export default function App() {
     return () => clearInterval(id);
   }, [result]);
 
-  const handleConfirmation = useCallback((isClean: boolean) => {
-    const binKey = isClean ? "RECYCLABLE" : "TRASH";
+  const handleConfirmation = useCallback((isEmpty: boolean) => {
+    // Use the categories Gemma 4 specified; fall back to sensible defaults
+    const chosen = (
+      isEmpty
+        ? (result?.yes_category?.toUpperCase() || "RECYCLABLE")
+        : (result?.no_category?.toUpperCase() || "TRASH")
+    ) as keyof LidStates;
+
     if (lidTimerRef.current) clearTimeout(lidTimerRef.current);
-    setLidStates((prev) => ({ ...prev, [binKey]: true }));
+    setLidStates((prev) => ({ ...prev, [chosen]: true }));
     lidTimerRef.current = setTimeout(() => {
-      setLidStates((prev) => ({ ...prev, [binKey]: false }));
+      setLidStates((prev) => ({ ...prev, [chosen]: false }));
     }, LID_OPEN_MS);
-    // Update the displayed result so the UI reflects the final decision
+
     setResult((prev) =>
       prev
         ? {
             ...prev,
-            category: isClean ? "RECYCLABLE" : "TRASH",
-            bin_action: isClean ? "OPEN_RECYCLABLE" : "OPEN_TRASH",
-            color: isClean ? "#22c55e" : "#6b7280",
-            icon: isClean ? "♻️" : "🗑️",
+            category: chosen as ClassificationResult["category"],
+            bin_action: `OPEN_${chosen}`,
+            color: CATEGORY_COLORS[chosen] ?? "#6b7280",
+            icon: CATEGORY_ICONS[chosen] ?? "🗑️",
             needs_confirmation: false,
           }
         : prev
     );
-  }, []);
+  }, [result]);
 
   const [isPartial, setIsPartial] = useState(false);
+  const [thinkingText, setThinkingText] = useState("");
 
   const classifyImage = useCallback(async (file: File) => {
     setIsLoading(true);
     setIsPartial(false);
+    setThinkingText("");
     setError(null);
     setResult(null);
 
@@ -219,7 +244,9 @@ export default function App() {
             continue;
           }
 
-          if (event.status === "partial") {
+          if (event.status === "thinking") {
+            setThinkingText((prev) => prev + (event.text as string));
+          } else if (event.status === "partial") {
             // Show the category card immediately — don't wait for the full result
             const partial: ClassificationResult = {
               item_identified: (event.item_identified as string) ?? "Analyzing…",
@@ -383,6 +410,7 @@ export default function App() {
             result={result}
             isLoading={isLoading}
             isPartial={isPartial}
+            thinkingText={thinkingText}
             onConfirm={handleConfirmation}
             onReplay={() => result && speak(buildSpeechText(result))}
             isMuted={isMuted}
@@ -399,7 +427,7 @@ export default function App() {
           <h2 className="text-sm font-semibold uppercase tracking-widest text-gray-400">
             Waste Analytics
           </h2>
-          <StatsPanel stats={stats} recentEvents={recentEvents} />
+          <StatsPanel stats={stats} impact={impact} recentEvents={recentEvents} />
 
           <div className="glass-card p-4 text-center space-y-1">
             <p className="text-xs text-gray-500 uppercase tracking-widest">Powered by</p>

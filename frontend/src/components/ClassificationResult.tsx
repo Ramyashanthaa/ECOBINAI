@@ -1,10 +1,65 @@
-import React from "react";
+import { useEffect, useRef, useState } from "react";
 import { ClassificationResult } from "../types";
+
+const THINKING_PHRASES = [
+  { verb: "Sniffing",        desc: "for traces of contamination" },
+  { verb: "Interrogating",   desc: "the container's past life" },
+  { verb: "Consulting",      desc: "the compost oracle" },
+  { verb: "Calculating",     desc: "decomposition rates" },
+  { verb: "Pondering",       desc: "the lifecycle of plastics" },
+  { verb: "Detecting",       desc: "hidden food residue" },
+  { verb: "Classifying",     desc: "polymer chains and organic matter" },
+  { verb: "Weighing",        desc: "environmental consequences" },
+  { verb: "Triangulating",   desc: "optimal bin assignment" },
+  { verb: "Debating",        desc: "landfill vs. compost philosophy" },
+  { verb: "Communing",       desc: "with the recycling gods" },
+  { verb: "Scanning",        desc: "for hazardous materials" },
+  { verb: "Philosophizing",  desc: "about waste and civilisation" },
+  { verb: "Noodling",        desc: "over contamination thresholds" },
+  { verb: "Percolating",     desc: "through waste taxonomies" },
+  { verb: "Synthesizing",    desc: "environmental impact data" },
+  { verb: "Investigating",   desc: "suspicious residue patterns" },
+  { verb: "Cross-referencing", desc: "municipal recycling guidelines" },
+  { verb: "Inspecting",      desc: "the molecular structure" },
+  { verb: "Deliberating",    desc: "the carbon footprint implications" },
+];
+
+function ThinkingPhrase() {
+  const [index, setIndex] = useState(() => Math.floor(Math.random() * THINKING_PHRASES.length));
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setIndex((i) => (i + 1) % THINKING_PHRASES.length);
+        setVisible(true);
+      }, 350);
+    }, 1800);
+    return () => clearInterval(id);
+  }, []);
+
+  const { verb, desc } = THINKING_PHRASES[index];
+
+  return (
+    <div
+      className="flex flex-col items-center justify-center gap-1 py-3 select-none
+                 transition-opacity duration-300"
+      style={{ opacity: visible ? 1 : 0 }}
+    >
+      <span className="text-xl font-bold text-emerald-300 tracking-tight">
+        {verb}…
+      </span>
+      <span className="text-xs text-gray-500">{desc}</span>
+    </div>
+  );
+}
 
 interface Props {
   result: ClassificationResult | null;
   isLoading: boolean;
   isPartial?: boolean;
+  thinkingText?: string;
   onConfirm?: (isClean: boolean) => void;
   onReplay?: () => void;
   isMuted?: boolean;
@@ -12,14 +67,82 @@ interface Props {
   isListening?: boolean;
 }
 
-export default function ClassificationResultPanel({ result, isLoading, isPartial, onConfirm, onReplay, isMuted, onToggleMute, isListening }: Props) {
+function ReasoningPanel({ thinkingText, isStreaming, defaultExpanded = true }: { thinkingText: string; isStreaming: boolean; defaultExpanded?: boolean }) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  // Only display text that came before the JSON block — the human-readable reasoning
+  const displayText = thinkingText.includes("{")
+    ? thinkingText.slice(0, thinkingText.indexOf("{")).trim()
+    : thinkingText.trim();
+
+  useEffect(() => {
+    if (bodyRef.current && expanded) {
+      bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+    }
+  }, [displayText, expanded]);
+
+  return (
+    <div className="w-full rounded-xl border border-emerald-900/40 overflow-hidden">
+      {/* Header */}
+      <button
+        onClick={() => setExpanded((e) => !e)}
+        className="w-full flex items-center justify-between px-4 py-2.5
+                   bg-emerald-950/50 hover:bg-emerald-950/70 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-widest">
+            Gemma 4's Reasoning
+          </span>
+          {isStreaming && (
+            <span className="flex items-center gap-0.5">
+              {[0, 150, 300].map((delay) => (
+                <span
+                  key={delay}
+                  className="w-1 h-1 rounded-full bg-emerald-400 animate-bounce"
+                  style={{ animationDelay: `${delay}ms` }}
+                />
+              ))}
+            </span>
+          )}
+        </div>
+        <span className="text-gray-500 text-xs">{expanded ? "▲" : "▼"}</span>
+      </button>
+
+      {/* Body */}
+      {expanded && (
+        <div
+          ref={bodyRef}
+          className="max-h-44 overflow-y-auto px-4 py-3 bg-black/40
+                     font-mono text-sm leading-relaxed text-left"
+        >
+          {displayText ? (
+            <span className="text-emerald-300/90">
+              {displayText}
+              {isStreaming && (
+                <span className="animate-pulse text-emerald-400 ml-0.5">▌</span>
+              )}
+            </span>
+          ) : isStreaming ? (
+            <ThinkingPhrase />
+          ) : (
+            <span className="text-gray-600 italic text-xs">No reasoning captured.</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ClassificationResultPanel({ result, isLoading, isPartial, thinkingText, onConfirm, onReplay, isMuted, onToggleMute, isListening }: Props) {
   if (isLoading) {
     return (
-      <div className="glass-card p-6 flex flex-col items-center justify-center gap-4 min-h-48">
-        <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-gray-400 animate-pulse">
-          Gemma 4 is analyzing your waste item…
-        </p>
+      <div className="glass-card p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="w-5 h-5 border-[3px] border-emerald-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+          <p className="text-sm text-emerald-400 font-medium">Gemma 4 is analyzing…</p>
+        </div>
+        <ReasoningPanel thinkingText={thinkingText ?? ""} isStreaming={true} />
       </div>
     );
   }
@@ -62,7 +185,7 @@ export default function ClassificationResultPanel({ result, isLoading, isPartial
           style={{ backgroundColor: "#facc1522", border: "1px solid #facc1566" }}
         >
           <p className="text-yellow-300 text-sm font-medium">
-            {result.confirmation_question || "Is this container empty and free of food residue inside?"}
+            {result.confirmation_question || "Is this container empty, or does it still have liquid or food inside?"}
           </p>
         </div>
 
@@ -92,7 +215,7 @@ export default function ClassificationResultPanel({ result, isLoading, isPartial
                        hover:scale-105 active:scale-95"
             style={{ backgroundColor: "#22c55e33", color: "#22c55e", border: "1px solid #22c55e66" }}
           >
-            ✅ Yes, it's clean
+            ✅ Yes, it's empty
           </button>
           <button
             onClick={() => onConfirm?.(false)}
@@ -100,7 +223,7 @@ export default function ClassificationResultPanel({ result, isLoading, isPartial
                        hover:scale-105 active:scale-95"
             style={{ backgroundColor: "#6b728033", color: "#9ca3af", border: "1px solid #6b728066" }}
           >
-            🗑️ No, it's dirty
+            🥤 No, it has liquid/food
           </button>
         </div>
 
@@ -180,6 +303,11 @@ export default function ClassificationResultPanel({ result, isLoading, isPartial
             <p className="text-yellow-300/80 text-xs mt-0.5">{result.contamination_details}</p>
           </div>
         </div>
+      )}
+
+      {/* Collapsible reasoning panel — shows what Gemma 4 said during analysis */}
+      {thinkingText && (
+        <ReasoningPanel thinkingText={thinkingText} isStreaming={!!isPartial} defaultExpanded={false} />
       )}
 
       {/* Footer */}

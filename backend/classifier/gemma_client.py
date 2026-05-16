@@ -208,7 +208,6 @@ def _classify_ollama(image_bytes: bytes) -> dict:
         "prompt": _COMBINED_PROMPT,
         "images": [_image_to_base64(optimized_bytes)],
         "stream": False,
-        "format": "json",
         "options": {"num_predict": _MAX_OUTPUT_TOKENS, "temperature": 0.0},
     }
     resp = _ollama_client.post(
@@ -227,7 +226,6 @@ def _stream_ollama(image_bytes: bytes) -> Generator[str, None, None]:
         "prompt": _COMBINED_PROMPT,
         "images": [_image_to_base64(optimized_bytes)],
         "stream": True,
-        "format": "json",
         "options": {"num_predict": _MAX_OUTPUT_TOKENS, "temperature": 0.0},
     }
     with _ollama_client.stream(
@@ -358,7 +356,11 @@ def classify_image_stream(image_bytes: bytes) -> Generator[str, None, None]:
     cached = _get_cached(image_bytes)
     if cached is not None:
         logger.info("Cache hit — streaming cached result")
-        yield json.dumps(cached)
+        reasoning = cached.get("_reasoning", "")
+        if reasoning:
+            yield reasoning + "\n"
+        clean = {k: v for k, v in cached.items() if not k.startswith("_")}
+        yield json.dumps(clean)
         return
 
     backend = settings.gemma_backend

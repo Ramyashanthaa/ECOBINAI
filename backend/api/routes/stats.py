@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from backend.api.schemas import StatsResponse, WasteEventOut
+from backend.api.schemas import ImpactResponse, StatsResponse, WasteEventOut
 from backend.database.crud import (
     get_category_stats,
     get_contamination_rate,
+    get_impact_stats,
     get_recent_events,
     get_total_events,
 )
@@ -34,6 +35,12 @@ def get_stats(db: Session = Depends(get_db)):
         trash_pct=pct("TRASH"),
         hazardous_pct=pct("HAZARDOUS"),
     )
+
+
+@router.get("/impact", response_model=ImpactResponse)
+def get_impact(db: Session = Depends(get_db)):
+    """Running environmental impact totals derived from classified items."""
+    return ImpactResponse(**get_impact_stats(db))
 
 
 @router.get("/recent", response_model=list[WasteEventOut])
