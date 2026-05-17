@@ -41,7 +41,6 @@ A user holds an item in front of the camera. EcoBin AI streams the frame to **Ge
 | 🗑️ **Trash** | Contaminated recyclables, styrofoam, disposable cups, non-recyclables |
 | ⚠️ **Hazardous** | Batteries, electronics, chemicals, medications |
 | ❓ **Pending** | Opaque containers — the system asks the user a yes/no question by voice before deciding |
-| 👤 **Human** | Only when no waste item is visible at all — the bin gently reminds you it sorts waste, not people |
 
 **The contamination rule is non-negotiable.** A recyclable container with visible food residue is classified as **TRASH**, not RECYCLABLE — because in the real world a single contaminated item ruins an entire batch of recyclables. Disposable coffee cups are always TRASH regardless of branding, angle, or apparent cleanliness. These rules are embedded in the system prompt as inviolable constraints, not left to model judgment.
 
