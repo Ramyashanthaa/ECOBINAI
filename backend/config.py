@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
 
@@ -54,6 +55,18 @@ class Settings(BaseSettings):
     app_port: int = 8000
     database_url: str = "sqlite:///./ecobin.db"
     lid_open_duration: int = 3600  # effectively until the next item is scanned (resets on new classification)
+
+    # Accept "0x40", "0X40", "64", or 64 for the PCA9685 I2C address.
+    @field_validator("pca9685_address", mode="before")
+    @classmethod
+    def _coerce_hex_address(cls, v):
+        if isinstance(v, str):
+            s = v.strip()
+            try:
+                return int(s, 16) if s.lower().startswith("0x") else int(s)
+            except ValueError as e:
+                raise ValueError(f"Invalid PCA9685 address {v!r}") from e
+        return v
 
 
 settings = Settings()

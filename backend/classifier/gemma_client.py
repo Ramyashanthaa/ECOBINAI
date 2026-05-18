@@ -302,6 +302,13 @@ def _get_cached(image_bytes: bytes) -> dict | None:
 
 
 def _store_cached(image_bytes: bytes, result: dict) -> None:
+    # Never cache the safe-fallback — otherwise a single transient failure
+    # poisons every future scan of the same item until the server restarts.
+    if result.get("item_identified") in ("Unable to analyze", "Unknown item"):
+        logger.info("Skipping cache write — result is a safe-fallback")
+        return
+    if result.get("category") == "ERROR":
+        return
     if len(_result_cache) >= _CACHE_SIZE:
         del _result_cache[next(iter(_result_cache))]
     _result_cache[_cache_key(image_bytes)] = result

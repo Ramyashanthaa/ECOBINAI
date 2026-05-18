@@ -20,10 +20,13 @@ source .venv/bin/activate
 # 2. System dependencies (incl. I2C tools for PCA9685)
 echo "📦 Installing Raspberry Pi system packages..."
 sudo apt-get update
+# libatlas-base-dev / libblas-dev / liblapack-dev are no longer required —
+# numpy ships ARM64 wheels with BLAS bundled on Bookworm and later.
 sudo apt-get install -y --no-install-recommends \
   python3-dev python3-venv python3-opencv \
-  libjpeg-dev libopenjp2-7-dev libatlas-base-dev libblas-dev liblapack-dev pkg-config \
-  i2c-tools v4l-utils
+  libjpeg-dev libopenjp2-7-dev pkg-config \
+  i2c-tools v4l-utils \
+  python3-lgpio || true
 
 # 3. Enable I2C (PCA9685 needs it)
 echo "🔌 Enabling I2C interface..."
@@ -79,7 +82,10 @@ echo "🚀 Raspberry Pi 5 setup complete!"
 echo ""
 echo "Test it now with:"
 echo "  source .venv/bin/activate"
-echo "  uvicorn backend.api.main:app --host 0.0.0.0 --port 8000"
+echo "  .venv/bin/uvicorn backend.api.main:app --host 0.0.0.0 --port 8000"
+echo ""
+echo "Or, without activating the venv:"
+echo "  .venv/bin/python -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000"
 echo ""
 echo "Dashboard:  http://<pi-ip>:8000/"
 echo "Standalone: hold an item in front of the USB cam — the matching bin opens automatically."

@@ -179,6 +179,19 @@ async def classify_image_stream_endpoint(
     )
 
 
+# ── Cache management ──────────────────────────────────────────────────────────
+
+@router.post("/cache/clear")
+def clear_classification_cache():
+    """Wipe the in-memory image-hash cache. Useful after a transient model
+    failure poisoned the cache with safe-fallback results."""
+    from backend.classifier.gemma_client import _result_cache
+    n = len(_result_cache)
+    _result_cache.clear()
+    logger.info(f"Classification cache cleared ({n} entries removed)")
+    return {"cleared": n}
+
+
 # ── Lid state endpoints ───────────────────────────────────────────────────────
 
 @router.get("/lid-states", response_model=LidStateResponse)
