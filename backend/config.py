@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     database_url: str = "sqlite:///./ecobin.db"
-    lid_open_duration: int = 60
+    lid_open_duration: int = 3600  # effectively until the next item is scanned (resets on new classification)
 
 
 settings = Settings()

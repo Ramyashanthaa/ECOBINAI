@@ -22,6 +22,8 @@ class ClassificationResponse(BaseModel):
     yes_category: str = ""
     no_category: str = ""
     unified_description: str = ""  # Merged summary for UI display
+    donatable: bool = False
+    donation_suggestion: str = ""
 
 
 class ImpactResponse(BaseModel):

@@ -20,6 +20,8 @@ export interface ClassificationResult {
   yes_category?: string;
   no_category?: string;
   unified_description?: string;  // Merged summary: "Item - is a Category because reason"
+  donatable?: boolean;
+  donation_suggestion?: string;
 }
 
 export interface LidStates {

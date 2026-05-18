@@ -67,8 +67,7 @@ interface Props {
   isListening?: boolean;
 }
 
-function ReasoningPanel({ thinkingText, isStreaming, defaultExpanded = true }: { thinkingText: string; isStreaming: boolean; defaultExpanded?: boolean }) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
+function ReasoningPanel({ thinkingText, isStreaming }: { thinkingText: string; isStreaming: boolean; defaultExpanded?: boolean }) {
   const bodyRef = useRef<HTMLDivElement>(null);
 
   // Only display text that came before the JSON block — the human-readable reasoning
@@ -77,22 +76,21 @@ function ReasoningPanel({ thinkingText, isStreaming, defaultExpanded = true }: {
     : thinkingText.trim();
 
   useEffect(() => {
-    if (bodyRef.current && expanded) {
+    if (bodyRef.current) {
       bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
     }
-  }, [displayText, expanded]);
+  }, [displayText]);
 
   return (
     <div className="w-full rounded-xl border border-emerald-900/40 overflow-hidden">
-      {/* Header */}
-      <button
-        onClick={() => setExpanded((e) => !e)}
-        className="w-full flex items-center justify-between px-4 py-2.5
-                   bg-emerald-950/50 hover:bg-emerald-950/70 transition-colors text-left"
+      {/* Header — static, always-expanded (no toggle) */}
+      <div
+        className="w-full flex items-center px-4 py-2.5
+                   bg-emerald-950/50 text-left"
       >
         <div className="flex items-center gap-2.5">
           <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-widest">
-            Gemma 4's Reasoning
+            What is it?
           </span>
           {isStreaming && (
             <span className="flex items-center gap-0.5">
@@ -106,30 +104,27 @@ function ReasoningPanel({ thinkingText, isStreaming, defaultExpanded = true }: {
             </span>
           )}
         </div>
-        <span className="text-gray-500 text-xs">{expanded ? "▲" : "▼"}</span>
-      </button>
+      </div>
 
-      {/* Body */}
-      {expanded && (
-        <div
-          ref={bodyRef}
-          className="max-h-44 overflow-y-auto px-4 py-3 bg-black/40
-                     font-mono text-sm leading-relaxed text-left"
-        >
-          {displayText ? (
-            <span className="text-emerald-300/90">
-              {displayText}
-              {isStreaming && (
-                <span className="animate-pulse text-emerald-400 ml-0.5">▌</span>
-              )}
-            </span>
-          ) : isStreaming ? (
-            <ThinkingPhrase />
-          ) : (
-            <span className="text-gray-600 italic text-xs">No reasoning captured.</span>
-          )}
-        </div>
-      )}
+      {/* Body — always rendered */}
+      <div
+        ref={bodyRef}
+        className="max-h-44 overflow-y-auto px-4 py-3 bg-black/40
+                   font-mono text-sm leading-relaxed text-left"
+      >
+        {displayText ? (
+          <span className="text-emerald-300/90">
+            {displayText}
+            {isStreaming && (
+              <span className="animate-pulse text-emerald-400 ml-0.5">▌</span>
+            )}
+          </span>
+        ) : isStreaming ? (
+          <ThinkingPhrase />
+        ) : (
+          <span className="text-gray-600 italic text-xs">No reasoning captured.</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -140,7 +135,7 @@ export default function ClassificationResultPanel({ result, isLoading, isPartial
       <div className="glass-card p-6 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-5 h-5 border-[3px] border-emerald-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-          <p className="text-sm text-emerald-400 font-medium">Gemma 4 is analyzing…</p>
+          <p className="text-sm text-emerald-400 font-medium">EcoBin AI is analyzing…</p>
         </div>
         <ReasoningPanel thinkingText={thinkingText ?? ""} isStreaming={true} />
       </div>
@@ -260,7 +255,7 @@ export default function ClassificationResultPanel({ result, isLoading, isPartial
           className="rounded-xl p-4 text-center border-l-4 font-medium text-base leading-relaxed"
           style={{ backgroundColor: result.color + "15", color: result.color, borderColor: result.color }}
         >
-          <span className="animate-pulse">{result.item_identified} detected — Gemma 4 is analyzing…</span>
+          <span className="animate-pulse">{result.item_identified} detected — EcoBin AI is analyzing…</span>
         </div>
       ) : (
         <div
@@ -301,6 +296,26 @@ export default function ClassificationResultPanel({ result, isLoading, isPartial
           <div>
             <p className="text-yellow-400 text-sm font-semibold">Contamination Detected</p>
             <p className="text-yellow-300/80 text-xs mt-0.5">{result.contamination_details}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Donation suggestion — shown when the item is still in usable shape.
+          Supplementary; the bin recommendation above still applies. */}
+      {!isPartial && result.donatable && result.donation_suggestion && (
+        <div className="flex items-start gap-3 rounded-xl p-3 border border-sky-500/40
+                        bg-gradient-to-r from-sky-900/30 to-emerald-900/20">
+          <span className="text-2xl leading-none mt-0.5">💝</span>
+          <div className="flex-1 text-left">
+            <p className="text-sky-300 text-sm font-semibold tracking-wide">
+              Consider donating instead
+            </p>
+            <p className="text-sky-100/90 text-xs mt-1 leading-relaxed">
+              {result.donation_suggestion}
+            </p>
+            <p className="text-gray-400 text-[10px] mt-1.5 italic">
+              Still recyclable / disposable in the bin above if donation isn't possible.
+            </p>
           </div>
         </div>
       )}

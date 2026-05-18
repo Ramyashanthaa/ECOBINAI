@@ -19,7 +19,7 @@ const DEFAULT_LID_STATES: LidStates = {
   HAZARDOUS: false,
 };
 
-const LID_OPEN_MS = 60000; // keep lid open until the next item is scanned (matches backend)
+const LID_OPEN_MS = 3600000; // keep lid open until the next item is scanned (resets on new classification)
 
 // Maps the bin_action string from the API to the lidStates key
 const BIN_ACTION_MAP: Record<string, keyof LidStates> = {
@@ -46,7 +46,9 @@ const CATEGORY_ICONS: Record<string, string> = {
 function buildSpeechText(r: ClassificationResult): string {
   if (r.category === "HUMAN") return r.pun || "Hello there! I sort waste, not people!";
   if (r.category === "PENDING") return r.confirmation_question || "Is this container empty, or does it still have liquid or food inside?";
-  return [r.reasoning, r.education_tip].filter(Boolean).join(" ");
+  return [r.reasoning, r.education_tip, r.donatable ? r.donation_suggestion : ""]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export default function App() {
@@ -206,7 +208,9 @@ export default function App() {
     setResult(null);
 
     if (lidTimerRef.current) clearTimeout(lidTimerRef.current);
-    setLidStates(DEFAULT_LID_STATES);
+    // Keep the previous bin's highlight on screen during analysis so the user
+    // still sees the last decision until the new result lands. The backend will
+    // close the prior lid and open the new one once classification completes.
 
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);

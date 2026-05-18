@@ -70,6 +70,8 @@ async def classify_image_endpoint(
         yes_category=result.yes_category,
         no_category=result.no_category,
         unified_description=result.unified_description,
+        donatable=result.donatable,
+        donation_suggestion=result.donation_suggestion,
     )
 
 

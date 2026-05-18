@@ -51,9 +51,10 @@ interface BinProps {
   type: BinCategory;
   isOpen: boolean;
   scale: number;
+  isDimmed: boolean;   // true when some other bin is open — this one should shrink and dull down
 }
 
-function Bin({ type, isOpen, scale }: BinProps) {
+function Bin({ type, isOpen, scale, isDimmed }: BinProps) {
   const cfg = BIN_CONFIG[type];
   const gradientId = `bin-grad-${type}`;
   const lidGradientId = `lid-grad-${type}`;
@@ -70,8 +71,14 @@ function Bin({ type, isOpen, scale }: BinProps) {
         flexDirection: "column",
         alignItems: "center",
         gap: 8,
-        transform: isOpen ? "scale(1.18) translateY(-6px)" : "scale(1)",
-        transition: "transform 0.4s cubic-bezier(0.34, 1.3, 0.64, 1)",
+        transform: isOpen
+          ? "scale(1.22) translateY(-6px)"
+          : isDimmed
+          ? "scale(0.78)"
+          : "scale(1)",
+        opacity: isDimmed ? 0.35 : 1,
+        filter: isDimmed ? "saturate(0.4) brightness(0.7)" : "none",
+        transition: "transform 0.45s cubic-bezier(0.34, 1.3, 0.64, 1), opacity 0.45s ease, filter 0.45s ease",
         zIndex: isOpen ? 10 : 1,
         position: "relative",
       }}
@@ -301,6 +308,7 @@ function useBinScale(): number {
 export default function BinDisplay({ lidStates }: BinDisplayProps) {
   const scale = useBinScale();
   const isCompact = scale < 0.85;
+  const anyOpen = Object.values(lidStates).some(Boolean);
   return (
     <div className="glass-card p-4 sm:p-6">
       <h2 className="text-sm font-semibold uppercase tracking-widest text-gray-400 mb-4 text-center">
@@ -316,9 +324,18 @@ export default function BinDisplay({ lidStates }: BinDisplayProps) {
           paddingBottom: 8,
         }}
       >
-        {(Object.keys(lidStates) as Array<keyof LidStates>).map((bin) => (
-          <Bin key={bin} type={bin} isOpen={lidStates[bin]} scale={scale} />
-        ))}
+        {(Object.keys(lidStates) as Array<keyof LidStates>).map((bin) => {
+          const open = lidStates[bin];
+          return (
+            <Bin
+              key={bin}
+              type={bin}
+              isOpen={open}
+              isDimmed={anyOpen && !open}
+              scale={scale}
+            />
+          );
+        })}
       </div>
     </div>
   );

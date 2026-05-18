@@ -279,7 +279,7 @@ export default function CameraFeed({ onCapture, isClassifying, isSpeaking = fals
             style={{ borderColor: `${accentColor} transparent ${accentColor} ${accentColor}` }}
           />
           <p className="text-white text-sm font-semibold tracking-wide">
-            Gemma 4 analyzing…
+            EcoBin AI is analyzing…
           </p>
         </div>
       )}

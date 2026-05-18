@@ -72,6 +72,8 @@ class ClassificationResult:
     yes_category: str = ""
     no_category: str = ""
     unified_description: str = ""
+    donatable: bool = False
+    donation_suggestion: str = ""
 
 
 def build_result_from_raw(
@@ -132,6 +134,8 @@ def build_result_from_raw(
         confirmation_question=raw.get("confirmation_question", ""),
         yes_category=str(raw.get("yes_category", "")).upper(),
         no_category=str(raw.get("no_category", "TRASH")).upper(),
+        donatable=bool(raw.get("donatable", False)),
+        donation_suggestion=str(raw.get("donation_suggestion", "")).strip(),
     )
 
     # Build unified description
