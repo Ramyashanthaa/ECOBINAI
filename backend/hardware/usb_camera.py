@@ -55,10 +55,10 @@ def _encode_jpeg(frame, quality: int = 90) -> bytes:
 
 def _classify_and_actuate(image_bytes: bytes, controller) -> None:
     """Run the same pipeline a browser upload uses. Done in this thread."""
-    # Local imports keep startup cheap and avoid pulling DB into modules that
-    # don't need it at import time.
+    import dataclasses
     from backend.classifier.waste_classifier import classify_waste
     from backend.database.models import SessionLocal
+    from backend.hardware.simulator import _broadcast
 
     db = SessionLocal()
     try:
@@ -67,6 +67,10 @@ def _classify_and_actuate(image_bytes: bytes, controller) -> None:
             f"[USB-CAM] classified: {result.item_identified} → {result.category} "
             f"({result.confidence:.0%})"
         )
+        # Push the full result to all connected browser dashboards so they can
+        # update the result card and trigger the voice readout — the same
+        # experience as an in-browser upload, but driven by the on-device camera.
+        _broadcast({"type": "classification", "result": dataclasses.asdict(result)})
     except Exception as exc:
         logger.error(f"[USB-CAM] classification pipeline failed: {exc}", exc_info=True)
     finally:

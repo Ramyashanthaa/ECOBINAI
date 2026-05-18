@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # EcoBinAI — Raspberry Pi production run script
-# Serves the pre-built React dashboard + FastAPI backend with PCA9685 servo control + USB camera
+# Serves the pre-built React dashboard + FastAPI backend with PCA9685 servo control + USB camera.
+# On a Pi with a monitor, also launches Chromium in kiosk mode automatically.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,7 +18,7 @@ source .venv/bin/activate
 
 # ── .env check ───────────────────────────────────────────────────────────────────
 if [ ! -f ".env" ]; then
-  echo "❌  .env not found. Copy .env.example, then set HARDWARE_MODE=true and HARDWARE_DRIVER=pca9685"
+  echo "❌  .env not found. Copy .env.example and configure for the Pi."
   exit 1
 fi
 
@@ -50,9 +51,65 @@ echo "   API docs  : http://${PI_IP:-<pi-ip>}:8000/docs"
 echo "   (Ctrl-C to stop)"
 echo ""
 
-# ── start — single worker required (hardware state is process-local) ──────────────
-exec uvicorn backend.api.main:app \
+# ── start backend — single worker required (hardware state is process-local) ─────
+uvicorn backend.api.main:app \
   --host 0.0.0.0 \
   --port 8000 \
   --workers 1 \
-  --log-level info
+  --log-level info &
+BACKEND_PID=$!
+
+# ── wait for backend to be healthy before launching browser ──────────────────────
+echo "⏳ Waiting for backend..."
+for i in $(seq 1 30); do
+  if curl -sf http://localhost:8000/api/health >/dev/null 2>&1; then
+    echo "✅ Backend ready"
+    break
+  fi
+  sleep 1
+done
+
+# ── launch Chromium in kiosk mode if a display is available ──────────────────────
+DISPLAY_ENV="${DISPLAY:-:0}"
+BROWSER_PID=""
+
+# Speech synthesis on Linux/Chromium requires --autoplay-policy=no-user-gesture-required
+# so the voice readout fires automatically without a manual click.
+CHROMIUM_FLAGS=(
+  --kiosk
+  --noerrdialogs
+  --disable-infobars
+  --no-first-run
+  --disable-session-crashed-bubble
+  --autoplay-policy=no-user-gesture-required
+  --disable-features=TranslateUI
+  "http://localhost:8000"
+)
+
+if DISPLAY="$DISPLAY_ENV" xset q &>/dev/null 2>&1; then
+  # A display is reachable — find whichever Chromium binary is installed
+  CHROMIUM_BIN=""
+  for bin in chromium-browser chromium google-chrome; do
+    if command -v "$bin" &>/dev/null; then
+      CHROMIUM_BIN="$bin"
+      break
+    fi
+  done
+
+  if [ -n "$CHROMIUM_BIN" ]; then
+    echo "🌐 Launching $CHROMIUM_BIN in kiosk mode on display $DISPLAY_ENV..."
+    DISPLAY="$DISPLAY_ENV" "$CHROMIUM_BIN" "${CHROMIUM_FLAGS[@]}" &
+    BROWSER_PID=$!
+    echo "✅ Browser started (PID $BROWSER_PID)"
+  else
+    echo "⚠️  No Chromium/Chrome found — open http://localhost:8000 manually"
+    echo "   Install with: sudo apt-get install chromium-browser"
+  fi
+else
+  echo "ℹ️  No display detected — open http://${PI_IP:-<pi-ip>}:8000 from another device"
+fi
+
+# ── graceful shutdown on Ctrl-C ──────────────────────────────────────────────────
+trap 'echo ""; echo "Stopping..."; kill "$BACKEND_PID" 2>/dev/null; [ -n "$BROWSER_PID" ] && kill "$BROWSER_PID" 2>/dev/null; exit 0' SIGINT SIGTERM
+
+wait "$BACKEND_PID"

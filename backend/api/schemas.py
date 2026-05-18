@@ -67,4 +67,5 @@ class HealthResponse(BaseModel):
     backend: str
     model: str
     hardware_mode: bool
+    usb_camera_enabled: bool = False
     version: str = "1.0.0"
