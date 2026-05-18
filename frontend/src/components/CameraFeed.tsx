@@ -12,10 +12,9 @@ interface Props {
   isClassifying: boolean;
   isSpeaking?: boolean;
   resultColor?: string;
-  usbCameraEnabled?: boolean;
 }
 
-export default function CameraFeed({ onCapture, isClassifying, isSpeaking = false, resultColor, usbCameraEnabled = false }: Props) {
+export default function CameraFeed({ onCapture, isClassifying, isSpeaking = false, resultColor }: Props) {
   const videoRef        = useRef<HTMLVideoElement>(null);
   const streamRef       = useRef<MediaStream | null>(null);
   const isClassifyingRef = useRef(isClassifying);
@@ -197,41 +196,10 @@ export default function CameraFeed({ onCapture, isClassifying, isSpeaking = fals
 
   const accentColor = resultColor ?? "#22c55e";
 
-  // ── Autonomous mode banner — shown when backend USB camera is also running.
-  // We no longer hide the browser camera; both input sources stay available so
-  // the user can demo either path. The banner just explains what's happening.
-  const autonomousBanner = usbCameraEnabled ? (
-    <div
-      className="mb-3 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs"
-      style={{
-        borderColor: (resultColor ?? "#22c55e") + "55",
-        background:  (resultColor ?? "#22c55e") + "11",
-      }}
-    >
-      <span className="relative flex h-2 w-2">
-        <span
-          className="absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping"
-          style={{ backgroundColor: resultColor ?? "#22c55e" }}
-        />
-        <span
-          className="relative inline-flex rounded-full h-2 w-2"
-          style={{ backgroundColor: resultColor ?? "#22c55e" }}
-        />
-      </span>
-      <span className="text-gray-300">
-        <span className="font-semibold" style={{ color: resultColor ?? "#22c55e" }}>
-          Autonomous mode active —
-        </span>{" "}
-        the on-device USB webcam is also scanning automatically.
-      </span>
-    </div>
-  ) : null;
-
   // ── Idle (camera not yet started) ──────────────────────────────────────────
   if (!isActive) {
     return (
       <div>
-        {autonomousBanner}
         <div
           onClick={startCamera}
           className="border-2 border-dashed border-gray-700 rounded-2xl p-10
@@ -258,8 +226,6 @@ export default function CameraFeed({ onCapture, isClassifying, isSpeaking = fals
 
   // ── Live camera view ────────────────────────────────────────────────────────
   return (
-    <div>
-    {autonomousBanner}
     <div className="relative rounded-2xl overflow-hidden bg-black select-none">
 
       {/* Live video — mirror only the front (user) camera so selfies feel
@@ -428,7 +394,6 @@ export default function CameraFeed({ onCapture, isClassifying, isSpeaking = fals
           </div>
         </div>
       )}
-    </div>
     </div>
   );
 }

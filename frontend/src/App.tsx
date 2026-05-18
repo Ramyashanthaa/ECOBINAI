@@ -5,7 +5,7 @@ import ClassificationResultPanel from "./components/ClassificationResult";
 import StatsPanel from "./components/StatsPanel";
 import { useSpeech } from "./hooks/useSpeech";
 import { useSpeechRecognition } from "./hooks/useSpeechRecognition";
-import { ClassificationResult, HealthInfo, ImpactStats, LidStates, StatsData, WasteEvent } from "./types";
+import { ClassificationResult, ImpactStats, LidStates, StatsData, WasteEvent } from "./types";
 
 type InputMode = "camera" | "upload";
 
@@ -74,8 +74,6 @@ export default function App() {
   const wsRef = useRef<WebSocket | null>(null);
   const lidTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [usbCameraEnabled, setUsbCameraEnabled] = useState(false);
-
   const { speak, cancel, isSpeaking } = useSpeech();
   const lastSpokenKeyRef = useRef<string>("");
 
@@ -86,14 +84,6 @@ export default function App() {
       // "unclear" — keep buttons visible, do nothing (user can try again or tap)
     },
   });
-
-  // Fetch backend health once to discover usb_camera_enabled
-  useEffect(() => {
-    fetch(`${API_BASE}/health`)
-      .then((r) => r.json())
-      .then((h: HealthInfo) => setUsbCameraEnabled(h.usb_camera_enabled))
-      .catch(() => {});
-  }, []);
 
   // Auto-speak when a new result arrives; skip if same text was just spoken
   useEffect(() => {
@@ -425,7 +415,6 @@ export default function App() {
               isClassifying={isLoading}
               isSpeaking={isSpeaking}
               resultColor={result?.color}
-              usbCameraEnabled={usbCameraEnabled}
             />
           ) : (
             /* Upload / drag-drop zone */
