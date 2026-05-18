@@ -146,7 +146,7 @@ export default function App() {
         // Intentionally ignore "init" — every page load should start neutral,
         // not inherit a still-open lid from a previous session.
         if (data.type === "lid_open") {
-          setLidStates((prev) => ({ ...prev, [data.bin]: true }));
+          setLidStates({ ...DEFAULT_LID_STATES, [data.bin]: true });
         } else if (data.type === "lid_close") {
           setLidStates((prev) => ({ ...prev, [data.bin]: false }));
         } else if (data.type === "classification") {
@@ -201,7 +201,7 @@ export default function App() {
       fetch(`${API_BASE}/classify/open-bin/${chosen}`, { method: "POST" }).catch(() => {});
       fetch(`${API_BASE}/classify/resume-scan`, { method: "POST" }).catch(() => {});
       if (lidTimerRef.current) clearTimeout(lidTimerRef.current);
-      setLidStates((prev) => ({ ...prev, [chosen]: true }));
+      setLidStates({ ...DEFAULT_LID_STATES, [chosen]: true });
       lidTimerRef.current = setTimeout(
         () => setLidStates((prev) => ({ ...prev, [chosen]: false })),
         LID_OPEN_MS,
@@ -234,7 +234,7 @@ export default function App() {
     fetch(`${API_BASE}/classify/open-bin/${chosen}`, { method: "POST" }).catch(() => {});
     fetch(`${API_BASE}/classify/resume-scan`, { method: "POST" }).catch(() => {});
     if (lidTimerRef.current) clearTimeout(lidTimerRef.current);
-    setLidStates((prev) => ({ ...prev, [chosen]: true }));
+    setLidStates({ ...DEFAULT_LID_STATES, [chosen]: true });
     lidTimerRef.current = setTimeout(
       () => setLidStates((prev) => ({ ...prev, [chosen]: false })),
       LID_OPEN_MS,
@@ -341,7 +341,7 @@ export default function App() {
 
             const binKey = BIN_ACTION_MAP[data.bin_action];
             if (binKey) {
-              setLidStates((prev) => ({ ...prev, [binKey]: true }));
+              setLidStates({ ...DEFAULT_LID_STATES, [binKey]: true });
               lidTimerRef.current = setTimeout(() => {
                 setLidStates((prev) => ({ ...prev, [binKey]: false }));
               }, LID_OPEN_MS);
