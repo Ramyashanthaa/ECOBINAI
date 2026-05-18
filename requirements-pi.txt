@@ -3,8 +3,8 @@
 -r requirements.txt
 
 # Direct GPIO PWM path (legacy `hardware_driver=gpio` mode)
-RPi.GPIO==0.7.1
-gpiozero==1.7.0
+RPi.GPIO>=0.7.1
+gpiozero>=2.0
 
 # Adafruit Blinka + PCA9685 — required for `hardware_driver=pca9685`.
 # These drive 4 SG90 servos via I2C from the Pi 5's pins 3 (SDA) / 5 (SCL).
