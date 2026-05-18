@@ -14,7 +14,10 @@
       "PowerShell(& .\\\\.venv\\\\Scripts\\\\python.exe -m pip install -r requirements.txt --quiet 2>&1)",
       "PowerShell(Set-Location \"c:\\\\Personal\\\\EcoBinAI\\\\ECOBINAI\"; $env:PYTHONUNBUFFERED=\"1\"; & .\\\\.venv\\\\Scripts\\\\python.exe -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 2>&1 | Tee-Object -FilePath .\\\\local-server.log)",
       "PowerShell(Start-Sleep -Seconds 5; try { \"Health: \" + \\(Invoke-WebRequest -Uri \"http://localhost:8000/api/health\" -UseBasicParsing -TimeoutSec 10\\).Content } catch { \"Not ready: $\\($_.Exception.Message\\)\" })",
-      "PowerShell(Start-Sleep -Seconds 6; try { \"Health: \" + \\(Invoke-WebRequest -Uri \"http://localhost:8000/api/health\" -UseBasicParsing -TimeoutSec 10\\).Content } catch { \"Not ready: $\\($_.Exception.Message\\)\" })"
+      "PowerShell(Start-Sleep -Seconds 6; try { \"Health: \" + \\(Invoke-WebRequest -Uri \"http://localhost:8000/api/health\" -UseBasicParsing -TimeoutSec 10\\).Content } catch { \"Not ready: $\\($_.Exception.Message\\)\" })",
+      "Bash(git rev-list *)",
+      "Bash(git checkout *)",
+      "Bash(git push *)"
     ]
   }
 }

@@ -32,12 +32,21 @@ async def lifespan(app: FastAPI):
     controller = get_controller()
     classify_router_module.set_controller(controller)
     await asyncio.to_thread(warmup_backend)
+
+    # Optional headless USB-camera capture loop (standalone Pi mode).
+    # No-op when usb_camera_enabled is false, so behaviour for the
+    # browser/cloud deployment is unchanged.
+    from backend.hardware.usb_camera import start_capture_loop, stop_capture_loop
+    start_capture_loop(controller)
+
     logger.info(
         f"EcoBinAI started | backend={settings.gemma_backend} "
-        f"model={settings.gemma_model} hardware={settings.hardware_mode}"
+        f"model={settings.gemma_model} hardware={settings.hardware_mode} "
+        f"driver={settings.hardware_driver} usb_cam={settings.usb_camera_enabled}"
     )
     yield
     # Shutdown
+    stop_capture_loop()
     if hasattr(controller, "cleanup"):
         controller.cleanup()
     logger.info("EcoBinAI stopped")

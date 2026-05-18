@@ -113,8 +113,29 @@ class BinController:
 
 
 def get_controller():
-    """Factory: returns real BinController or BinSimulator based on config."""
-    if settings.hardware_mode:
-        return BinController()
-    from backend.hardware.simulator import BinSimulator
-    return BinSimulator()
+    """
+    Factory: returns the right controller based on config.
+
+    Selection order:
+      1. hardware_mode = false  → BinSimulator (always safe on non-Pi hosts)
+      2. hardware_mode = true + hardware_driver = pca9685 → PCA9685Controller
+         (falls back to BinSimulator if I2C/PCA9685 libs aren't available)
+      3. hardware_mode = true + hardware_driver = gpio    → BinController
+         (direct GPIO PWM; also falls back internally)
+    """
+    if not settings.hardware_mode:
+        from backend.hardware.simulator import BinSimulator
+        return BinSimulator()
+
+    if settings.hardware_driver == "pca9685":
+        try:
+            from backend.hardware.pca9685_controller import PCA9685Controller
+            return PCA9685Controller()
+        except Exception as exc:
+            logger.warning(
+                f"PCA9685 controller unavailable ({exc}); falling back to simulator."
+            )
+            from backend.hardware.simulator import BinSimulator
+            return BinSimulator()
+
+    return BinController()

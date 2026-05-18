@@ -126,9 +126,9 @@ export default function App() {
 
       ws.onmessage = (ev) => {
         const data = JSON.parse(ev.data);
-        if (data.type === "init") {
-          setLidStates(data.states);
-        } else if (data.type === "lid_open") {
+        // Intentionally ignore "init" — every page load should start neutral,
+        // not inherit a still-open lid from a previous session.
+        if (data.type === "lid_open") {
           setLidStates((prev) => ({ ...prev, [data.bin]: true }));
         } else if (data.type === "lid_close") {
           setLidStates((prev) => ({ ...prev, [data.bin]: false }));
