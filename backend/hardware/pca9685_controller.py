@@ -53,7 +53,7 @@ class PCA9685Controller:
                 min_pulse=settings.servo_closed_us,
                 max_pulse=settings.servo_open_us,
             )
-            s.angle = 0
+            s.angle = settings.servo_closed_angle
             self._servos[bin_type] = s
 
         logger.info(
@@ -74,7 +74,7 @@ class PCA9685Controller:
         for other in VALID_BINS:
             if other != bin_type and _lid_states.get(other):
                 self.close_lid(other)
-        self._set_angle(bin_type, 180)
+        self._set_angle(bin_type, settings.servo_open_angle)
         _lid_states[bin_type] = True
         _broadcast({"type": "lid_open", "bin": bin_type, "timestamp": time.time()})
         logger.info(f"[PCA9685] {bin_type} lid OPEN for {duration}s")
@@ -88,7 +88,7 @@ class PCA9685Controller:
     def close_lid(self, bin_type: str) -> None:
         if bin_type not in VALID_BINS:
             raise ValueError(f"Unknown bin: {bin_type}")
-        self._set_angle(bin_type, 0)
+        self._set_angle(bin_type, settings.servo_closed_angle)
         _lid_states[bin_type] = False
         _broadcast({"type": "lid_close", "bin": bin_type, "timestamp": time.time()})
         logger.info(f"[PCA9685] {bin_type} lid CLOSED")
@@ -100,7 +100,7 @@ class PCA9685Controller:
     def self_test(self, duration: int = 5) -> None:
         logger.info(f"[PCA9685] Self-test: opening all bins for {duration}s")
         for bin_type in self._channels:
-            self._set_angle(bin_type, 180)
+            self._set_angle(bin_type, settings.servo_open_angle)
             _lid_states[bin_type] = True
             _broadcast({"type": "lid_open", "bin": bin_type, "timestamp": time.time()})
         time.sleep(duration)

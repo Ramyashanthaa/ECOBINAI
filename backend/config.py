@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     # SG90 calibration — pulse widths in microseconds at closed / open angles.
     servo_closed_us: int = 600     # ~0°
     servo_open_us: int = 2400      # ~180°
+    # Angles commanded to the servo at closed / open positions (degrees, 0–180).
+    # Tune SERVO_OPEN_ANGLE down (e.g. 90) if the lid swings too far.
+    servo_closed_angle: float = 0
+    servo_open_angle: float = 180
 
     # Camera (used by the on-device USB-camera capture loop when enabled)
     camera_index: int | str = 0
