@@ -87,6 +87,10 @@ class BinSimulator:
         if bin_type not in VALID_BINS:
             raise ValueError(f"Unknown bin type: {bin_type}")
 
+        for other in VALID_BINS:
+            if other != bin_type and _lid_states.get(other):
+                self.close_lid(other)
+
         _lid_states[bin_type] = True
         _broadcast({"type": "lid_open", "bin": bin_type, "timestamp": time.time()})
         logger.info(f"[SIM] {bin_type} lid OPEN for {duration}s")
@@ -105,3 +109,12 @@ class BinSimulator:
     def close_all(self) -> None:
         for bin_type in VALID_BINS:
             self.close_lid(bin_type)
+
+    def self_test(self, duration: int = 5) -> None:
+        logger.info(f"[SIM] Self-test: opening all bins for {duration}s")
+        for bin_type in VALID_BINS:
+            _lid_states[bin_type] = True
+            _broadcast({"type": "lid_open", "bin": bin_type, "timestamp": time.time()})
+        time.sleep(duration)
+        self.close_all()
+        logger.info("[SIM] Self-test complete")

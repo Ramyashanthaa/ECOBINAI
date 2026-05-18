@@ -71,6 +71,9 @@ class PCA9685Controller:
     def open_lid(self, bin_type: str, duration: int = 5) -> None:
         if bin_type not in VALID_BINS:
             raise ValueError(f"Unknown bin: {bin_type}")
+        for other in VALID_BINS:
+            if other != bin_type and _lid_states.get(other):
+                self.close_lid(other)
         self._set_angle(bin_type, 180)
         _lid_states[bin_type] = True
         _broadcast({"type": "lid_open", "bin": bin_type, "timestamp": time.time()})
@@ -93,6 +96,16 @@ class PCA9685Controller:
     def close_all(self) -> None:
         for bin_type in self._channels:
             self.close_lid(bin_type)
+
+    def self_test(self, duration: int = 5) -> None:
+        logger.info(f"[PCA9685] Self-test: opening all bins for {duration}s")
+        for bin_type in self._channels:
+            self._set_angle(bin_type, 180)
+            _lid_states[bin_type] = True
+            _broadcast({"type": "lid_open", "bin": bin_type, "timestamp": time.time()})
+        time.sleep(duration)
+        self.close_all()
+        logger.info("[PCA9685] Self-test complete")
 
     def cleanup(self) -> None:
         try:

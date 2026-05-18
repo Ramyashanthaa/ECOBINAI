@@ -63,10 +63,16 @@ class BinController:
         if hasattr(self, "_pwms"):
             if bin_type not in self._pwms:
                 raise ValueError(f"Unknown bin: {bin_type}")
+            for other in self._pwms:
+                if other != bin_type:
+                    self._pwms[other].ChangeDutyCycle(CLOSED_DUTY)
             self._pwms[bin_type].ChangeDutyCycle(OPEN_DUTY)
         elif hasattr(self, "_servos"):
             if bin_type not in self._servos:
                 raise ValueError(f"Unknown bin: {bin_type}")
+            for other, s in self._servos.items():
+                if other != bin_type:
+                    s.value = -1
             self._servos[bin_type].value = 1
         else:
             raise RuntimeError("No hardware controller available")
@@ -94,6 +100,21 @@ class BinController:
             return
         for bin_type in self._pwms:
             self.close_lid(bin_type)
+
+    def self_test(self, duration: int = 5) -> None:
+        if hasattr(self, "_delegate"):
+            self._delegate.self_test(duration)
+            return
+        logger.info(f"[HW] Self-test: opening all bins for {duration}s")
+        if hasattr(self, "_pwms"):
+            for pwm in self._pwms.values():
+                pwm.ChangeDutyCycle(OPEN_DUTY)
+        elif hasattr(self, "_servos"):
+            for s in self._servos.values():
+                s.value = 1
+        time.sleep(duration)
+        self.close_all()
+        logger.info("[HW] Self-test complete")
 
     def cleanup(self) -> None:
         if hasattr(self, "_delegate"):

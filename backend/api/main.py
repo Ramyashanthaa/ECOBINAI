@@ -31,6 +31,8 @@ async def lifespan(app: FastAPI):
     capture_loop()          # store running loop for thread-safe WebSocket broadcasts
     controller = get_controller()
     classify_router_module.set_controller(controller)
+    if hasattr(controller, "self_test"):
+        await asyncio.to_thread(controller.self_test, 5)
     await asyncio.to_thread(warmup_backend)
 
     # Optional headless USB-camera capture loop (standalone Pi mode).
