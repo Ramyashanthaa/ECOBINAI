@@ -43,6 +43,13 @@ const CATEGORY_ICONS: Record<string, string> = {
   HAZARDOUS:  "⚠️",
 };
 
+const CLEANING_SPEECH =
+  "This item has food or liquid residue, so it can't be recycled as-is. " +
+  "Here's how to make it recyclable: rinse out all food and grease with water, " +
+  "clean the inside thoroughly, remove the lid and clean it separately, " +
+  "then let it dry. Once it's clean and empty, it goes straight in the recycling bin. " +
+  "Can you clean it right now?";
+
 function buildSpeechText(r: ClassificationResult): string {
   if (r.category === "HUMAN") return r.pun || "Hello there! I sort waste, not people!";
   if (r.category === "PENDING") return r.confirmation_question || "Is this container empty, or does it still have liquid or food inside?";
@@ -94,12 +101,11 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [result, isMuted, speak, startListening]);
 
-  // Stop the mic when a new scan starts. (We deliberately do NOT cancel the
-  // current voiceover — auto-scan is already gated on isSpeaking so the next
-  // capture waits until the previous announcement finishes naturally.)
+  // Stop the mic and dismiss cleaning guidance when a new scan starts.
   useEffect(() => {
     if (isLoading) {
       stopListening();
+      setShowCleaningGuidance(false);
       lastSpokenKeyRef.current = "";
     }
   }, [isLoading, stopListening]);
@@ -112,6 +118,7 @@ export default function App() {
     setError(null);
     setPreviewUrl(null);
     setLidStates(DEFAULT_LID_STATES);
+    setShowCleaningGuidance(false);
   }, []);
 
   // WebSocket for real-time lid state updates
@@ -170,35 +177,66 @@ export default function App() {
   }, [result]);
 
   const handleConfirmation = useCallback((isEmpty: boolean) => {
-    // Use the categories Gemma 4 specified; fall back to sensible defaults
-    const chosen = (
-      isEmpty
-        ? (result?.yes_category?.toUpperCase() || "RECYCLABLE")
-        : (result?.no_category?.toUpperCase() || "TRASH")
-    ) as keyof LidStates;
+    if (isEmpty) {
+      // Empty and clean — open the recycling bin immediately
+      const chosen = (result?.yes_category?.toUpperCase() || "RECYCLABLE") as keyof LidStates;
+      if (lidTimerRef.current) clearTimeout(lidTimerRef.current);
+      setLidStates((prev) => ({ ...prev, [chosen]: true }));
+      lidTimerRef.current = setTimeout(
+        () => setLidStates((prev) => ({ ...prev, [chosen]: false })),
+        LID_OPEN_MS,
+      );
+      setResult((prev) =>
+        prev ? {
+          ...prev,
+          category: chosen as ClassificationResult["category"],
+          bin_action: `OPEN_${chosen}`,
+          color: CATEGORY_COLORS[chosen] ?? "#6b7280",
+          icon:  CATEGORY_ICONS[chosen]  ?? "♻️",
+          needs_confirmation: false,
+          reasoning:     "it's already clean and empty — perfect for recycling.",
+          education_tip: "Rinse containers before recycling to keep the stream uncontaminated. Remove the lid if attached and recycle it separately.",
+        } : prev
+      );
+    } else {
+      // Has residue — guide the user through cleaning before deciding
+      stopListening();
+      setResult((prev) => prev ? { ...prev, needs_confirmation: false } : prev);
+      setShowCleaningGuidance(true);
+      speak(CLEANING_SPEECH);
+    }
+  }, [result, speak, stopListening]);
 
+  // Called from the cleaning guidance panel after the user decides
+  const handleCleaningDecision = useCallback((canClean: boolean) => {
+    setShowCleaningGuidance(false);
+    const chosen = (canClean ? "RECYCLABLE" : "TRASH") as keyof LidStates;
     if (lidTimerRef.current) clearTimeout(lidTimerRef.current);
     setLidStates((prev) => ({ ...prev, [chosen]: true }));
-    lidTimerRef.current = setTimeout(() => {
-      setLidStates((prev) => ({ ...prev, [chosen]: false }));
-    }, LID_OPEN_MS);
-
-    setResult((prev) =>
-      prev
-        ? {
-            ...prev,
-            category: chosen as ClassificationResult["category"],
-            bin_action: `OPEN_${chosen}`,
-            color: CATEGORY_COLORS[chosen] ?? "#6b7280",
-            icon: CATEGORY_ICONS[chosen] ?? "🗑️",
-            needs_confirmation: false,
-          }
-        : prev
+    lidTimerRef.current = setTimeout(
+      () => setLidStates((prev) => ({ ...prev, [chosen]: false })),
+      LID_OPEN_MS,
     );
-  }, [result]);
+    setResult((prev) =>
+      prev ? {
+        ...prev,
+        category: chosen as ClassificationResult["category"],
+        bin_action: `OPEN_${chosen}`,
+        color: CATEGORY_COLORS[chosen] ?? "#6b7280",
+        icon:  CATEGORY_ICONS[chosen]  ?? "🗑️",
+        reasoning: canClean
+          ? "you cleaned it out — now it's ready for the recycling bin."
+          : "it still has residue and can't be cleaned right now, so it goes in the trash to prevent contamination.",
+        education_tip: canClean
+          ? "Great job! Clean packaging re-enters the material cycle instead of going to landfill."
+          : "Contaminated items can ruin entire batches of recyclables. When in doubt, choose trash.",
+      } : prev
+    );
+  }, []);
 
   const [isPartial, setIsPartial] = useState(false);
   const [thinkingText, setThinkingText] = useState("");
+  const [showCleaningGuidance, setShowCleaningGuidance] = useState(false);
 
   const classifyImage = useCallback(async (file: File) => {
     setIsLoading(true);
@@ -422,6 +460,8 @@ export default function App() {
             isMuted={isMuted}
             onToggleMute={() => { setIsMuted((m) => { if (!m) cancel(); return !m; }); }}
             isListening={isListening}
+            showCleaningGuidance={showCleaningGuidance}
+            onCleaningDecision={handleCleaningDecision}
           />
 
           {/* ── Bin display ───────────────────────────────────────────────── */}

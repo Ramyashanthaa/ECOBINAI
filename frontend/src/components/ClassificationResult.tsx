@@ -65,6 +65,8 @@ interface Props {
   isMuted?: boolean;
   onToggleMute?: () => void;
   isListening?: boolean;
+  showCleaningGuidance?: boolean;
+  onCleaningDecision?: (canClean: boolean) => void;
 }
 
 function ReasoningPanel({ thinkingText, isStreaming }: { thinkingText: string; isStreaming: boolean; defaultExpanded?: boolean }) {
@@ -129,7 +131,7 @@ function ReasoningPanel({ thinkingText, isStreaming }: { thinkingText: string; i
   );
 }
 
-export default function ClassificationResultPanel({ result, isLoading, isPartial, thinkingText, onConfirm, onReplay, isMuted, onToggleMute, isListening }: Props) {
+export default function ClassificationResultPanel({ result, isLoading, isPartial, thinkingText, onConfirm, onReplay, isMuted, onToggleMute, isListening, showCleaningGuidance, onCleaningDecision }: Props) {
   if (isLoading) {
     return (
       <div className="glass-card p-6 space-y-4">
@@ -144,6 +146,69 @@ export default function ClassificationResultPanel({ result, isLoading, isPartial
 
   if (!result) {
     return null;
+  }
+
+  // ── Cleaning guidance — user said the container is not empty ─────────────
+  if (showCleaningGuidance) {
+    return (
+      <div className="glass-card p-6 animate-slide-up space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="text-4xl">🫧</span>
+          <div>
+            <p className="text-xs text-gray-500 uppercase tracking-widest">Cleaning Required</p>
+            <h3 className="text-xl font-bold text-white">{result.item_identified}</h3>
+          </div>
+        </div>
+
+        <div
+          className="rounded-xl p-4 space-y-2"
+          style={{ background: "#052e1688", border: "1px solid #22c55e44" }}
+        >
+          <p className="text-emerald-300 text-sm font-semibold mb-2">
+            How to make it recyclable:
+          </p>
+          <ol className="text-gray-300 text-sm space-y-2 list-none">
+            {[
+              "Rinse out all food and grease with water",
+              "Clean the inside thoroughly — no leftover residue",
+              "Remove the lid and clean it separately",
+              "Let it dry, then place in the recycling bin ♻️",
+            ].map((step, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span
+                  className="flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold"
+                  style={{ backgroundColor: "#22c55e33", color: "#22c55e" }}
+                >
+                  {i + 1}
+                </span>
+                {step}
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <p className="text-center text-gray-400 text-sm">
+          Can you clean it right now?
+        </p>
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => onCleaningDecision?.(true)}
+            className="flex-1 py-3 rounded-xl font-semibold text-sm transition-all hover:scale-105 active:scale-95"
+            style={{ backgroundColor: "#22c55e33", color: "#22c55e", border: "1px solid #22c55e66" }}
+          >
+            ✅ Yes, I cleaned it — Recycle
+          </button>
+          <button
+            onClick={() => onCleaningDecision?.(false)}
+            className="flex-1 py-3 rounded-xl font-semibold text-sm transition-all hover:scale-105 active:scale-95"
+            style={{ backgroundColor: "#6b728033", color: "#9ca3af", border: "1px solid #6b728066" }}
+          >
+            🗑️ Can't clean it — Trash
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // ── Human detected ────────────────────────────────────────────────────────
