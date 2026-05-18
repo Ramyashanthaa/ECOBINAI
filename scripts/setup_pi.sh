@@ -25,7 +25,8 @@ sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
   python3-dev python3-venv python3-opencv \
   libjpeg-dev libopenjp2-7-dev pkg-config \
-  i2c-tools v4l-utils || true
+  i2c-tools v4l-utils \
+  python3-lgpio || true
 
 # 3. Enable I2C (PCA9685 needs it)
 echo "🔌 Enabling I2C interface..."

@@ -12,3 +12,7 @@ adafruit-blinka>=8.0
 adafruit-circuitpython-busdevice>=5.0
 adafruit-circuitpython-pca9685>=3.4
 adafruit-circuitpython-motor>=3.4
+
+# Pi 5 (BCM2712) requires lgpio — older RPi.GPIO can't drive its new SoC.
+# Blinka's pin module imports lgpio at startup; without it PCA9685 init fails.
+lgpio>=0.2
