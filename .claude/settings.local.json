@@ -17,7 +17,9 @@
       "PowerShell(Start-Sleep -Seconds 6; try { \"Health: \" + \\(Invoke-WebRequest -Uri \"http://localhost:8000/api/health\" -UseBasicParsing -TimeoutSec 10\\).Content } catch { \"Not ready: $\\($_.Exception.Message\\)\" })",
       "Bash(git rev-list *)",
       "Bash(git checkout *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
