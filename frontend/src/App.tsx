@@ -198,6 +198,8 @@ export default function App() {
     if (isEmpty) {
       // Empty and clean — open the recycling bin immediately
       const chosen = (result?.yes_category?.toUpperCase() || "RECYCLABLE") as keyof LidStates;
+      fetch(`${API_BASE}/classify/open-bin/${chosen}`, { method: "POST" }).catch(() => {});
+      fetch(`${API_BASE}/classify/resume-scan`, { method: "POST" }).catch(() => {});
       if (lidTimerRef.current) clearTimeout(lidTimerRef.current);
       setLidStates((prev) => ({ ...prev, [chosen]: true }));
       lidTimerRef.current = setTimeout(
@@ -229,6 +231,8 @@ export default function App() {
   const handleCleaningDecision = useCallback((canClean: boolean) => {
     setShowCleaningGuidance(false);
     const chosen = (canClean ? "RECYCLABLE" : "TRASH") as keyof LidStates;
+    fetch(`${API_BASE}/classify/open-bin/${chosen}`, { method: "POST" }).catch(() => {});
+    fetch(`${API_BASE}/classify/resume-scan`, { method: "POST" }).catch(() => {});
     if (lidTimerRef.current) clearTimeout(lidTimerRef.current);
     setLidStates((prev) => ({ ...prev, [chosen]: true }));
     lidTimerRef.current = setTimeout(

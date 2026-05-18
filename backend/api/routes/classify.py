@@ -179,6 +179,34 @@ async def classify_image_stream_endpoint(
     )
 
 
+# ── Confirmation-flow helpers ─────────────────────────────────────────────────
+
+@router.post("/open-bin/{bin_type}")
+def open_bin_endpoint(bin_type: str):
+    """Open a specific bin lid by name (RECYCLABLE, COMPOST, TRASH, HAZARDOUS).
+    Called by the frontend after the user answers the confirmation dialog."""
+    from backend.hardware.bin_controller import BIN_ACTION_MAP
+    from backend.config import settings
+    bin_type = bin_type.upper()
+    valid = set(BIN_ACTION_MAP.values())
+    if bin_type not in valid:
+        raise HTTPException(status_code=400, detail=f"Unknown bin: {bin_type}. Valid: {valid}")
+    if _controller:
+        try:
+            _controller.open_lid(bin_type, duration=settings.lid_open_duration)
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=str(exc))
+    return {"opened": bin_type}
+
+
+@router.post("/resume-scan")
+def resume_scan_endpoint():
+    """Resume USB-camera scanning after a user confirmation dialog is resolved."""
+    from backend.hardware.usb_camera import resume_scanning
+    resume_scanning()
+    return {"scanning": True}
+
+
 # ── Cache management ──────────────────────────────────────────────────────────
 
 @router.post("/cache/clear")

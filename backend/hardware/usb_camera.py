@@ -34,6 +34,20 @@ _busy_lock = threading.Lock()
 _thread: Optional[threading.Thread] = None
 _stop_event = threading.Event()
 
+# Pauses the capture loop while the user is answering a confirmation dialog.
+# Set when a PENDING result is received; cleared by resume_scanning().
+_scanning_paused = False
+
+
+def pause_scanning() -> None:
+    global _scanning_paused
+    _scanning_paused = True
+
+
+def resume_scanning() -> None:
+    global _scanning_paused
+    _scanning_paused = False
+
 
 def _grab_thumbnail(frame) -> np.ndarray:
     import cv2
@@ -67,6 +81,9 @@ def _classify_and_actuate(image_bytes: bytes, controller) -> None:
             f"[USB-CAM] classified: {result.item_identified} → {result.category} "
             f"({result.confidence:.0%})"
         )
+        if result.category == "PENDING":
+            pause_scanning()
+            logger.info("[USB-CAM] scanning paused — awaiting user confirmation")
         # Push the full result to all connected browser dashboards so they can
         # update the result card and trigger the voice readout — the same
         # experience as an in-browser upload, but driven by the on-device camera.
@@ -117,7 +134,7 @@ def _capture_loop(controller) -> None:
             else:
                 changed = _mean_abs_diff(thumb, last_thumb) >= settings.usb_camera_scene_diff_threshold
 
-            if changed and _busy_lock.acquire(blocking=False):
+            if changed and not _scanning_paused and _busy_lock.acquire(blocking=False):
                 last_thumb = thumb
                 try:
                     img_bytes = _encode_jpeg(frame)
