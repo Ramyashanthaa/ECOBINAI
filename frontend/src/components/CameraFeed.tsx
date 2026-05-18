@@ -197,70 +197,60 @@ export default function CameraFeed({ onCapture, isClassifying, isSpeaking = fals
 
   const accentColor = resultColor ?? "#22c55e";
 
-  // ── Autonomous mode — backend USB camera is active ─────────────────────────
-  if (usbCameraEnabled) {
-    const accentAuto = resultColor ?? "#22c55e";
-    return (
-      <div className="border-2 rounded-2xl p-8 text-center select-none"
-           style={{ borderColor: accentAuto + "66", background: accentAuto + "0a" }}>
-        <div className="space-y-4">
-          {/* Pulsing camera icon */}
-          <div className="flex items-center justify-center">
-            <span className="relative flex h-16 w-16 items-center justify-center">
-              <span
-                className="absolute inline-flex h-full w-full rounded-full opacity-30 animate-ping"
-                style={{ backgroundColor: accentAuto }}
-              />
-              <span className="relative text-4xl">📷</span>
-            </span>
-          </div>
-
-          <div>
-            <p className="text-white font-bold text-lg">Autonomous Mode</p>
-            <p className="text-sm mt-1" style={{ color: accentAuto }}>
-              Backend camera is live — scanning automatically
-            </p>
-          </div>
-
-          <p className="text-gray-500 text-xs leading-relaxed max-w-xs mx-auto">
-            Hold a waste item in front of the USB webcam. EcoBin AI will classify
-            it and open the correct bin automatically.
-          </p>
-
-          {isClassifying && (
-            <div className="flex items-center justify-center gap-2 text-sm font-medium"
-                 style={{ color: accentAuto }}>
-              <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
-                   style={{ borderColor: `${accentAuto} transparent ${accentAuto} ${accentAuto}` }} />
-              Analyzing…
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
+  // ── Autonomous mode banner — shown when backend USB camera is also running.
+  // We no longer hide the browser camera; both input sources stay available so
+  // the user can demo either path. The banner just explains what's happening.
+  const autonomousBanner = usbCameraEnabled ? (
+    <div
+      className="mb-3 flex items-center gap-2 rounded-xl border px-3 py-2 text-xs"
+      style={{
+        borderColor: (resultColor ?? "#22c55e") + "55",
+        background:  (resultColor ?? "#22c55e") + "11",
+      }}
+    >
+      <span className="relative flex h-2 w-2">
+        <span
+          className="absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping"
+          style={{ backgroundColor: resultColor ?? "#22c55e" }}
+        />
+        <span
+          className="relative inline-flex rounded-full h-2 w-2"
+          style={{ backgroundColor: resultColor ?? "#22c55e" }}
+        />
+      </span>
+      <span className="text-gray-300">
+        <span className="font-semibold" style={{ color: resultColor ?? "#22c55e" }}>
+          Autonomous mode active —
+        </span>{" "}
+        the on-device USB webcam is also scanning automatically.
+      </span>
+    </div>
+  ) : null;
 
   // ── Idle (camera not yet started) ──────────────────────────────────────────
   if (!isActive) {
     return (
-      <div
-        onClick={startCamera}
-        className="border-2 border-dashed border-gray-700 rounded-2xl p-10
-                   text-center cursor-pointer select-none
-                   hover:border-emerald-500 hover:bg-emerald-900/10 transition-all"
-      >
-        <div className="space-y-4">
-          <span className="text-6xl block">📷</span>
-          <p className="text-white font-semibold text-lg">Click to start camera</p>
-          <p className="text-gray-500 text-sm">
-            Hold a waste item in front of your webcam, then press the shutter button
-          </p>
-          {cameraError && (
-            <p className="text-red-400 text-sm bg-red-900/20 border border-red-700/40
-                          rounded-xl px-4 py-2 mt-2">
-              {cameraError}
+      <div>
+        {autonomousBanner}
+        <div
+          onClick={startCamera}
+          className="border-2 border-dashed border-gray-700 rounded-2xl p-10
+                     text-center cursor-pointer select-none
+                     hover:border-emerald-500 hover:bg-emerald-900/10 transition-all"
+        >
+          <div className="space-y-4">
+            <span className="text-6xl block">📷</span>
+            <p className="text-white font-semibold text-lg">Click to start camera</p>
+            <p className="text-gray-500 text-sm">
+              Hold a waste item in front of your webcam, then press the shutter button
             </p>
-          )}
+            {cameraError && (
+              <p className="text-red-400 text-sm bg-red-900/20 border border-red-700/40
+                            rounded-xl px-4 py-2 mt-2">
+                {cameraError}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -268,6 +258,8 @@ export default function CameraFeed({ onCapture, isClassifying, isSpeaking = fals
 
   // ── Live camera view ────────────────────────────────────────────────────────
   return (
+    <div>
+    {autonomousBanner}
     <div className="relative rounded-2xl overflow-hidden bg-black select-none">
 
       {/* Live video — mirror only the front (user) camera so selfies feel
@@ -436,6 +428,7 @@ export default function CameraFeed({ onCapture, isClassifying, isSpeaking = fals
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }
