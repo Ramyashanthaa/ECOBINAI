@@ -12,9 +12,10 @@ interface Props {
   isClassifying: boolean;
   isSpeaking?: boolean;
   resultColor?: string;
+  usbCameraEnabled?: boolean;
 }
 
-export default function CameraFeed({ onCapture, isClassifying, isSpeaking = false, resultColor }: Props) {
+export default function CameraFeed({ onCapture, isClassifying, isSpeaking = false, resultColor, usbCameraEnabled = false }: Props) {
   const videoRef        = useRef<HTMLVideoElement>(null);
   const streamRef       = useRef<MediaStream | null>(null);
   const isClassifyingRef = useRef(isClassifying);
@@ -195,6 +196,49 @@ export default function CameraFeed({ onCapture, isClassifying, isSpeaking = fals
   useEffect(() => () => { streamRef.current?.getTracks().forEach((t) => t.stop()); }, []);
 
   const accentColor = resultColor ?? "#22c55e";
+
+  // ── Autonomous mode — backend USB camera is active ─────────────────────────
+  if (usbCameraEnabled) {
+    const accentAuto = resultColor ?? "#22c55e";
+    return (
+      <div className="border-2 rounded-2xl p-8 text-center select-none"
+           style={{ borderColor: accentAuto + "66", background: accentAuto + "0a" }}>
+        <div className="space-y-4">
+          {/* Pulsing camera icon */}
+          <div className="flex items-center justify-center">
+            <span className="relative flex h-16 w-16 items-center justify-center">
+              <span
+                className="absolute inline-flex h-full w-full rounded-full opacity-30 animate-ping"
+                style={{ backgroundColor: accentAuto }}
+              />
+              <span className="relative text-4xl">📷</span>
+            </span>
+          </div>
+
+          <div>
+            <p className="text-white font-bold text-lg">Autonomous Mode</p>
+            <p className="text-sm mt-1" style={{ color: accentAuto }}>
+              Backend camera is live — scanning automatically
+            </p>
+          </div>
+
+          <p className="text-gray-500 text-xs leading-relaxed max-w-xs mx-auto">
+            Hold a waste item in front of the USB webcam. EcoBin AI will classify
+            it and open the correct bin automatically.
+          </p>
+
+          {isClassifying && (
+            <div className="flex items-center justify-center gap-2 text-sm font-medium"
+                 style={{ color: accentAuto }}>
+              <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin"
+                   style={{ borderColor: `${accentAuto} transparent ${accentAuto} ${accentAuto}` }} />
+              Analyzing…
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // ── Idle (camera not yet started) ──────────────────────────────────────────
   if (!isActive) {

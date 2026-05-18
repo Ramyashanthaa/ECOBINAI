@@ -57,3 +57,11 @@ export interface WasteEvent {
   bin_action: string;
   created_at: string;
 }
+
+export interface HealthInfo {
+  status: string;
+  backend: string;
+  model: string;
+  hardware_mode: boolean;
+  usb_camera_enabled: boolean;
+}

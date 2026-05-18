@@ -80,6 +80,7 @@ def health():
         backend=settings.gemma_backend,
         model=settings.gemma_model,
         hardware_mode=settings.hardware_mode,
+        usb_camera_enabled=settings.usb_camera_enabled,
     )
 
 

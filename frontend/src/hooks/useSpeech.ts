@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 
 // Preferred voices in priority order — first match wins
 const PREFERRED_VOICES = [
-  "Google US English",
-  "Samantha",           // macOS built-in, warm and natural
-  "Karen",              // macOS Australian
-  "Moira",              // macOS Irish
-  "Victoria",           // macOS
+  "Google UK English Female",   // Chromium on Raspberry Pi OS (best quality)
+  "Google UK English Male",     // Chromium on Raspberry Pi OS fallback
+  "Google US English",          // Chromium on other Linux / Android
+  "Samantha",                   // macOS built-in, warm and natural
+  "Karen",                      // macOS Australian
+  "Moira",                      // macOS Irish
+  "Victoria",                   // macOS
   "Microsoft Aria Online (Natural)",
   "Microsoft Jenny Online (Natural)",
   "Microsoft Zira - English (United States)",
